@@ -1,0 +1,195 @@
+use crate::app_state;
+use crate::app_state::AppState;
+use crate::app_state::MenuItem;
+use crate::render;
+
+use crate::app_state::Event;
+use crate::authenticate::authenticate;
+use anyhow::Result;
+
+use crossterm::{
+    event::{self, Event as CEvent},
+    terminal::enable_raw_mode,
+};
+
+use std::io;
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Duration, Instant};
+use tokio::runtime::Runtime;
+use tui::{
+    backend::CrosstermBackend,
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Span, Spans},
+    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
+    Terminal,
+};
+
+impl From<MenuItem> for usize {
+    fn from(input: MenuItem) -> usize {
+        match input {
+            MenuItem::Home => 0,
+            MenuItem::Playlists => 1,
+            MenuItem::Videos => 2,
+            MenuItem::Account => 3,
+            MenuItem::Commands => 4,
+            MenuItem::Search => 5,
+        }
+    }
+}
+
+pub async fn tui_render() -> Result<()> {
+    let mut state = AppState {
+        messages: vec![],
+        authenticated: false,
+        active_menu_item: MenuItem::Home,
+        playlists: vec![],
+        playlist_number_input: String::new(),
+        playlist_selection_mode: false,
+    };
+    enable_raw_mode().expect("can run in raw mode");
+
+    let (tx, rx) = mpsc::channel();
+    let tick_rate = Duration::from_millis(200);
+    let tx_input = tx.clone();
+
+    let stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+
+    let menu_titles = vec![
+        "Account",
+        "Commands",
+        "Home",
+        "Playlists",
+        "Videos",
+        "Search",
+    ];
+
+    thread::spawn(move || {
+        let mut last_tick = Instant::now();
+        loop {
+            let timeout = tick_rate
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_else(|| Duration::from_secs(0));
+
+            if event::poll(timeout).expect("poll works") {
+                if let CEvent::Key(key) = event::read().expect("can read events") {
+                    tx_input.send(Event::Input(key)).expect("can send events");
+                }
+            }
+
+            if last_tick.elapsed() >= tick_rate {
+                let _ = tx_input.send(Event::Tick);
+                last_tick = Instant::now();
+            }
+        }
+    });
+
+    let rt = Runtime::new()?;
+    let mut authenticated = false;
+
+    loop {
+        if state.active_menu_item == MenuItem::Account && !authenticated {
+            authenticated = true;
+            state.messages.clear();
+
+            let tx_msg = tx.clone();
+
+            rt.spawn(async move {
+                let _ = crossterm::terminal::disable_raw_mode();
+                let result = authenticate(|msg| {
+                    let _ = tx_msg.send(Event::Message(msg.to_string()));
+                })
+                .await;
+                let _ = crossterm::terminal::enable_raw_mode();
+
+                if let Err(e) = result {
+                    let _ = tx_msg.send(Event::Message(format!("Authentication error: {}", e)));
+                }
+            });
+        }
+
+        terminal.draw(|rect| {
+            let size = rect.size();
+
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints(
+                    [
+                        Constraint::Length(3),
+                        Constraint::Min(2),
+                        Constraint::Length(3),
+                    ]
+                    .as_ref(),
+                )
+                .split(size);
+
+            let menu = menu_titles
+                .iter()
+                .map(|t| {
+                    let (first, rest) = t.split_at(1);
+                    Spans::from(vec![
+                        Span::styled(
+                            first,
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::UNDERLINED),
+                        ),
+                        Span::styled(rest, Style::default().fg(Color::White)),
+                    ])
+                })
+                .collect();
+
+            let tabs = Tabs::new(menu)
+                .select(state.active_menu_item.into())
+                .block(Block::default().title("Menu").borders(Borders::ALL))
+                .style(Style::default().fg(Color::White))
+                .highlight_style(Style::default().fg(Color::Yellow))
+                .divider(Span::raw("|"));
+
+            rect.render_widget(tabs, chunks[0]);
+
+            match state.active_menu_item {
+                MenuItem::Home => {
+                    rect.render_widget(render::render_home(), chunks[1]);
+                }
+                MenuItem::Playlists => {
+                    rect.render_widget(
+                        render::render_playlists(
+                            &state.playlists,
+                            state.playlist_selection_mode,
+                            &state.playlist_number_input,
+                        ),
+                        chunks[1],
+                    );
+                }
+                MenuItem::Videos => {
+                    rect.render_widget(render::render_videos(), chunks[1]);
+                }
+                MenuItem::Account => {
+                    rect.render_widget(render::render_accounts(&state.messages), chunks[1]);
+                }
+                MenuItem::Search => {
+                    rect.render_widget(render::render_search(), chunks[1]);
+                }
+                MenuItem::Commands => {
+                    rect.render_widget(render::render_commands(), chunks[1]);
+                }
+            }
+        })?;
+
+        match rx.recv()? {
+            Event::Input(event) => {
+                if app_state::event_handler(Event::Input(event), &mut state, &mut terminal).await? {
+                    break Ok(());
+                }
+            }
+            Event::Tick => {}
+            Event::Message(msg) => state.messages.push(msg),
+        }
+    }
+}
