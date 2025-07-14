@@ -1,7 +1,6 @@
 /target
-api_key.txt
-channel_id.txt
-credentials.json
-credentials.json
-tui_backup.rs
-tui_debug.log
+src/api_key.txt
+src/credentials.json
+src/token.json
+src/tui_backup.rs
+src/tui_debug.log
