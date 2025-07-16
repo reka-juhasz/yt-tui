@@ -1,10 +1,10 @@
 use anyhow::anyhow;
 use anyhow::{Context, Result};
 use reqwest::Client;
+use reqwest::Url;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Write;
-
 //file writing imports stay to help w debugging
 use std::process::Command;
 #[derive(Debug, Deserialize)]
@@ -28,6 +28,45 @@ pub struct Snippet {
 pub struct ResourceId {
     pub videoId: String,
 }
+
+#[derive(Debug, Deserialize)]
+struct SearchListResponse {
+    items: Vec<SearchItem>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SearchItem {
+    id: SearchItemId,
+}
+
+#[derive(Debug, Deserialize)]
+struct SearchItemId {
+    videoId: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct VideoListResponse {
+    items: Vec<VideoDetailItem>,
+}
+
+#[derive(Debug, Deserialize)]
+struct VideoDetailItem {
+    snippet: VideoSnippet,
+    contentDetails: ContentDetails,
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct VideoSnippet {
+    title: String,
+    channelTitle: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ContentDetails {
+    duration: String, // ISO 8601
+}
+
 /// direct audio stream from yt, using yt-dlp
 pub fn get_audio_url(video_url: &str) -> Result<String> {
     let output = Command::new("yt-dlp")
@@ -176,4 +215,86 @@ pub async fn play_playlist(access_token: &str, playlist_id: &str) -> Result<()> 
     }
 
     Ok(())
+}
+
+pub async fn search_videos(
+    access_token: &str,
+    query: &str,
+) -> Result<Vec<(String, String, String, String)>> {
+    let client = Client::new();
+    let mut url = Url::parse("https://www.googleapis.com/youtube/v3/search").unwrap();
+    url.query_pairs_mut()
+        .append_pair("part", "id")
+        .append_pair("type", "video")
+        .append_pair("q", query)
+        .append_pair("maxResults", "15");
+
+    let search_resp = client
+        .get(&url.to_string())
+        .bearer_auth(access_token)
+        .send()
+        .await
+        .context("Failed to send search request")?;
+
+    let status = search_resp.status();
+    let body = search_resp.text().await?;
+
+    if !status.is_success() {
+        return Err(anyhow::anyhow!("Search failed ({}): {}", status, body));
+    }
+
+    let search_data: SearchListResponse =
+        serde_json::from_str(&body).context("Failed to parse search response")?;
+
+    let video_ids: Vec<String> = search_data
+        .items
+        .into_iter()
+        .map(|item| item.id.videoId)
+        .collect();
+
+    if video_ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    // Step 2: Fetch video details
+    let video_url = format!(
+        "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id={}",
+        video_ids.join(",")
+    );
+
+    let video_resp = client
+        .get(&video_url)
+        .bearer_auth(access_token)
+        .send()
+        .await
+        .context("Failed to send video details request")?;
+
+    let status = video_resp.status();
+    let body = video_resp.text().await?;
+
+    if !status.is_success() {
+        return Err(anyhow::anyhow!(
+            "Video details failed ({}): {}",
+            status,
+            body
+        ));
+    }
+
+    let details: VideoListResponse =
+        serde_json::from_str(&body).context("Failed to parse video details response")?;
+
+    let results = details
+        .items
+        .into_iter()
+        .map(|item| {
+            let title = item.snippet.title;
+            let uploader = item.snippet.channelTitle;
+            let duration = item.contentDetails.duration;
+            let id = item.id;
+
+            (title, duration, uploader, id)
+        })
+        .collect();
+
+    Ok(results)
 }
