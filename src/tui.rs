@@ -46,8 +46,10 @@ pub async fn tui_render() -> Result<()> {
         active_menu_item: MenuItem::Home,
         playlists: vec![],
         search_result: vec![],
+        search_attempted: false,
         playlist_number_input: String::new(),
         playlist_selection_mode: false,
+        search_input: String::new(),
     };
     enable_raw_mode().expect("can run in raw mode");
 
@@ -175,7 +177,14 @@ pub async fn tui_render() -> Result<()> {
                     rect.render_widget(render::render_accounts(&state.messages), chunks[1]);
                 }
                 MenuItem::Search => {
-                    rect.render_widget(render::render_search(&state.search_result), chunks[1]);
+                    rect.render_widget(
+                        render::render_search_prompt(&state.search_input),
+                        chunks[1],
+                    );
+                    rect.render_widget(
+                        render::render_search(&state.search_result, state.search_attempted),
+                        chunks[1],
+                    );
                 }
                 MenuItem::Commands => {
                     rect.render_widget(render::render_commands(), chunks[1]);

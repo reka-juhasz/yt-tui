@@ -143,9 +143,20 @@ pub fn render_commands<'a>() -> Paragraph<'a> {
     )
 }
 
-pub fn render_search<'a>(search_results: &'a [(String, String, String, String)]) -> Paragraph<'a> {
-    let mut lines: Vec<Spans> = if search_results.is_empty() {
-        vec![Spans::from(vec![Span::raw("No search results found.")])]
+pub fn render_search<'a>(
+    search_results: &'a [(String, String, String, String)],
+    search_attempted: bool,
+) -> Paragraph<'a> {
+    let lines: Vec<Spans> = if !search_attempted {
+        vec![Spans::from(Span::styled(
+            "Type and press Enter to search...",
+            Style::default().fg(Color::DarkGray),
+        ))]
+    } else if search_results.is_empty() {
+        vec![Spans::from(Span::styled(
+            "No results found.",
+            Style::default().fg(Color::Red),
+        ))]
     } else {
         search_results
             .iter()
@@ -227,33 +238,16 @@ fn parse_iso8601_duration(duration: &str) -> String {
     }
 }
 
-pub fn read_search_query(prompt: &str) -> io::Result<String> {
-    terminal::disable_raw_mode().map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::Other,
-            format!("disable_raw_mode error: {:?}", e),
-        )
-    })?;
-
-    print!("{}", prompt);
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    terminal::enable_raw_mode().map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::Other,
-            format!("enable_raw_mode error: {:?}", e),
-        )
-    })?;
-
-    if input.ends_with('\n') {
-        input.pop();
-        if input.ends_with('\r') {
-            input.pop();
-        }
-    }
-
-    Ok(input)
+pub fn render_search_prompt<'a>(user_input: &'a str) -> Paragraph<'a> {
+    Paragraph::new(vec![
+        Spans::from(vec![Span::raw("Search YouTube:")]),
+        Spans::from(vec![Span::raw(user_input)]),
+    ])
+    .alignment(Alignment::Left)
+    .block(
+        Block::default()
+            .title("Search")
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::Yellow)),
+    )
 }

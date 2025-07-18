@@ -33,6 +33,8 @@ pub struct AppState {
     pub search_result: Vec<(String, String, String, String)>,
     pub playlist_number_input: String,
     pub playlist_selection_mode: bool,
+    pub search_input: String,
+    pub search_attempted: bool,
 }
 
 pub async fn event_handler(
@@ -42,6 +44,42 @@ pub async fn event_handler(
 ) -> Result<bool> {
     match event {
         Event::Input(key_event) => match key_event.code {
+            KeyCode::Char(c) if state.active_menu_item == MenuItem::Search => {
+                state.search_input.push(c);
+            }
+
+            KeyCode::Char('s') => {
+                state.active_menu_item = MenuItem::Search;
+                state.search_input.clear(); // reset previous input
+                state.search_result.clear(); // clear old results
+            }
+
+            KeyCode::Enter if state.active_menu_item == MenuItem::Search => {
+                state.search_attempted = true;
+                if let Some(token) = get_token() {
+                    let maybe_results = utilities::search_videos(
+                        token.access_token().secret(),
+                        &state.search_input,
+                    )
+                    .await
+                    .ok();
+
+                    if let Some(new) = maybe_results {
+                        state.search_result = new;
+                    } else {
+                        state
+                            .messages
+                            .push("❌ Failed to search videos".to_string());
+                    }
+                } else {
+                    state.messages.push("❌ No token available".to_string());
+                }
+            }
+
+            KeyCode::Backspace if state.active_menu_item == MenuItem::Search => {
+                state.search_input.pop();
+            }
+
             KeyCode::Char('q') => {
                 disable_raw_mode()?;
                 terminal.show_cursor()?;
@@ -57,29 +95,6 @@ pub async fn event_handler(
             KeyCode::Char('c') => state.active_menu_item = MenuItem::Commands,
             KeyCode::Char('h') => state.active_menu_item = MenuItem::Home,
             KeyCode::Char('v') => state.active_menu_item = MenuItem::Videos,
-
-            KeyCode::Char('s') => {
-                state.active_menu_item = MenuItem::Search;
-
-                let input = read_search_query("Search: ")?;
-                let query: &str = &input;
-                let maybe_results = if let Some(token) = get_token() {
-                    utilities::search_videos(token.access_token().secret(), query)
-                        .await
-                        .ok()
-                } else {
-                    let _ = std::fs::write("tui_debug.log", "No token available\n");
-                    None
-                };
-
-                if let Some(new) = maybe_results {
-                    state.search_result = new;
-                } else {
-                    state
-                        .messages
-                        .push("❌ Failed to fetch playlists".to_string());
-                }
-            }
 
             KeyCode::Char('p') => {
                 state.active_menu_item = MenuItem::Playlists;
@@ -157,38 +172,4 @@ pub async fn event_handler(
     }
 
     Ok(false)
-}
-
-use crossterm::terminal;
-use std::io::{self, Write};
-
-pub fn read_search_query(prompt: &str) -> io::Result<String> {
-    terminal::disable_raw_mode().map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::Other,
-            format!("disable_raw_mode error: {:?}", e),
-        )
-    })?;
-
-    print!("{}", prompt);
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    terminal::enable_raw_mode().map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::Other,
-            format!("enable_raw_mode error: {:?}", e),
-        )
-    })?;
-
-    if input.ends_with('\n') {
-        input.pop();
-        if input.ends_with('\r') {
-            input.pop();
-        }
-    }
-
-    Ok(input)
 }
