@@ -1,10 +1,12 @@
 use crate::app_state;
 use crate::app_state::AppState;
-use crate::app_state::MenuItem;
-use crate::render;
-
 use crate::app_state::Event;
+use crate::app_state::MenuItem;
 use crate::authenticate::authenticate;
+use crate::colors;
+use crate::colors::load_theme_from_file;
+use crate::colors::Theme;
+use crate::render;
 use anyhow::Result;
 
 use crossterm::{
@@ -12,6 +14,7 @@ use crossterm::{
     terminal::enable_raw_mode,
 };
 
+// Reuse the Theme from colors
 use std::io;
 use std::sync::mpsc;
 use std::thread;
@@ -54,6 +57,8 @@ pub async fn tui_render() -> Result<()> {
         search_number_input: String::new(),
         search_selection_mode: false,
     };
+
+    let mut theme = colors::load_theme_from_file("test_color.json")?;
     enable_raw_mode().expect("can run in raw mode");
 
     let (tx, rx) = mpsc::channel();
@@ -161,11 +166,12 @@ pub async fn tui_render() -> Result<()> {
 
             match state.active_menu_item {
                 MenuItem::Home => {
-                    rect.render_widget(render::render_home(), chunks[1]);
+                    rect.render_widget(render::render_home(&theme), chunks[1]);
                 }
                 MenuItem::Playlists => {
                     rect.render_widget(
                         render::render_playlists(
+                            &theme,
                             &state.playlists,
                             state.playlist_selection_mode,
                             &state.playlist_number_input,
@@ -177,7 +183,7 @@ pub async fn tui_render() -> Result<()> {
                     rect.render_widget(render::render_videos(), chunks[1]);
                 }
                 MenuItem::Account => {
-                    rect.render_widget(render::render_accounts(&state.messages), chunks[1]);
+                    rect.render_widget(render::render_accounts(&theme, &state.messages), chunks[1]);
                 }
                 MenuItem::Search => {
                     rect.render_widget(
@@ -186,6 +192,7 @@ pub async fn tui_render() -> Result<()> {
                     );
                     rect.render_widget(
                         render::render_search(
+                            &theme,
                             &state.search_result,
                             state.search_attempted,
                             state.search_selection_mode,
@@ -195,7 +202,7 @@ pub async fn tui_render() -> Result<()> {
                     );
                 }
                 MenuItem::Commands => {
-                    rect.render_widget(render::render_commands(), chunks[1]);
+                    rect.render_widget(render::render_commands(&theme), chunks[1]);
                 }
             }
         })?;

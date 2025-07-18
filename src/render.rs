@@ -1,6 +1,6 @@
+use crate::colors::Theme;
 use crossterm::terminal;
 use std::io::{self, Write};
-
 use tui::{
     layout::Alignment,
     style::{Color, Modifier, Style},
@@ -8,10 +8,13 @@ use tui::{
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
-pub fn render_home<'a>() -> Paragraph<'a> {
+pub fn render_home<'a>(theme: &Theme) -> Paragraph<'a> {
     Paragraph::new(vec![
         Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("Welcome to the YouTube TUI client!")]),
+        Spans::from(vec![Span::styled(
+            "Welcome to the YouTube TUI client!",
+            Style::default().fg(theme.home_text.0), // Text color here
+        )]),
     ])
     .alignment(Alignment::Center)
     .block(
@@ -19,28 +22,36 @@ pub fn render_home<'a>() -> Paragraph<'a> {
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
             .title("Home")
+            .style(Style::default().fg(theme.home_box.0))
             .border_type(BorderType::Plain),
     )
 }
 
 pub fn render_playlists<'a>(
+    theme: &Theme,
     playlists: &'a [(String, String)],
     playlist_selection_mode: bool,
     playlist_number_input: &'a str,
 ) -> Paragraph<'a> {
     let mut lines: Vec<Spans> = if playlists.is_empty() {
-        vec![Spans::from(vec![Span::raw("No playlists found.")])]
+        vec![Spans::from(vec![Span::styled(
+            "No playlists found.",
+            Style::default().fg(theme.account_auth_failure.0),
+        )])]
     } else {
         playlists
             .iter()
             .enumerate()
             .map(|(i, (title, id))| {
                 Spans::from(vec![
-                    Span::raw(format!("{:02}. ", i + 1)),
+                    Span::styled(
+                        format!("{:02}. ", i + 1),
+                        Style::default().fg(theme.playlist_number.0),
+                    ),
                     Span::styled(
                         title,
                         Style::default()
-                            .fg(Color::Yellow)
+                            .fg(theme.playlist_name.0)
                             .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(format!(" (ID: {})", id)),
@@ -55,7 +66,7 @@ pub fn render_playlists<'a>(
             Span::styled(
                 playlist_number_input,
                 Style::default()
-                    .fg(Color::Green)
+                    .fg(theme.playlist_number.0)
                     .add_modifier(Modifier::BOLD),
             ),
         ]));
@@ -89,12 +100,14 @@ pub fn render_videos<'a>() -> Paragraph<'a> {
     )
 }
 
-pub fn render_accounts<'a>(messages: &'a [String]) -> Paragraph<'a> {
+pub fn render_accounts<'a>(theme: &Theme, messages: &'a [String]) -> Paragraph<'a> {
     let mut lines = vec![
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::styled(
             "Your YouTube account info will appear here:",
-            Style::default().add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.account_info.0)
+                .add_modifier(Modifier::BOLD),
         )]),
         Spans::from(vec![Span::raw("")]),
     ];
@@ -108,42 +121,69 @@ pub fn render_accounts<'a>(messages: &'a [String]) -> Paragraph<'a> {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .style(Style::default().fg(Color::Blue))
+                .style(Style::default().fg(theme.account_box.0))
                 .title("Account")
                 .border_type(BorderType::Plain),
         )
 }
 
-pub fn render_commands<'a>() -> Paragraph<'a> {
+pub fn render_commands<'a>(theme: &Theme) -> Paragraph<'a> {
     Paragraph::new(vec![
         Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("Current commands:")]),
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw("q: to quit")]),
-        Spans::from(vec![Span::raw("a: to show accounts")]),
-        Spans::from(vec![Span::raw("c: to show this commands message")]),
-        Spans::from(vec![Span::raw("h: to go to the home tab")]),
-        Spans::from(vec![Span::raw("p: to show playlists")]),
-        Spans::from(vec![Span::raw("v: to show videos in playlists")]),
-        Spans::from(vec![Span::raw("s: to search yt")]),
-        Spans::from(vec![Span::raw(
-            "b: to bind a playlist to be the selected playlist",
+        Spans::from(vec![Span::styled(
+            "Current commands:",
+            Style::default().fg(theme.command_text_even.0),
         )]),
-        Spans::from(vec![Span::raw(
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::styled(
+            "q: to quit",
+            Style::default().fg(theme.command_text_odd.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "a: to show accounts",
+            Style::default().fg(theme.command_text_even.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "c: to show this commands message",
+            Style::default().fg(theme.command_text_odd.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "h: to go to the home tab",
+            Style::default().fg(theme.command_text_even.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "p: to show playlists",
+            Style::default().fg(theme.command_text_odd.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "v: to show videos in playlists",
+            Style::default().fg(theme.command_text_even.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "s: to search yt",
+            Style::default().fg(theme.command_text_odd.0),
+        )]),
+        Spans::from(vec![Span::styled(
+            "b: to bind a playlist to be the selected playlist",
+            Style::default().fg(theme.command_text_even.0),
+        )]),
+        Spans::from(vec![Span::styled(
             "press 'q' while playing playlists to skip the current song",
+            Style::default().fg(theme.command_text_odd.0),
         )]),
     ])
     .alignment(Alignment::Center)
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .style(Style::default().fg(Color::Blue))
+            .style(Style::default().fg(theme.command_box.0))
             .title("Commands")
             .border_type(BorderType::Plain),
     )
 }
 
 pub fn render_search<'a>(
+    theme: &Theme,
     search_results: &'a [(String, String, String, String)],
     search_attempted: bool,
     search_selection_mode: bool,
@@ -152,12 +192,12 @@ pub fn render_search<'a>(
     let mut lines: Vec<Spans> = if !search_attempted {
         vec![Spans::from(Span::styled(
             "Type and press Enter to search...",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.search_box.0),
         ))]
     } else if search_results.is_empty() {
         vec![Spans::from(Span::styled(
             "No results found.",
-            Style::default().fg(Color::Red),
+            Style::default().fg(theme.account_auth_failure.0),
         ))]
     } else {
         search_results
@@ -167,16 +207,22 @@ pub fn render_search<'a>(
                 let duration = parse_iso8601_duration(duration_raw);
 
                 Spans::from(vec![
-                    Span::raw(format!("{:02}. ", i + 1)),
+                    Span::styled(
+                        format!("{:02}. ", i + 1),
+                        Style::default().fg(theme.search_number.0),
+                    ),
                     Span::styled(
                         title,
                         Style::default()
-                            .fg(Color::Cyan)
+                            .fg(theme.search_name.0)
                             .add_modifier(Modifier::BOLD),
                     ),
-                    Span::raw(" by "),
-                    Span::styled(uploader, Style::default().fg(Color::Magenta)),
-                    Span::raw(format!(" [{}]", duration)),
+                    Span::styled(" by ", Style::default().fg(theme.search_uploader.0)),
+                    Span::styled(uploader, Style::default().fg(theme.search_number.0)),
+                    Span::styled(
+                        format!(" [{}]", duration),
+                        Style::default().fg(theme.search_name.0),
+                    ),
                 ])
             })
             .collect()
@@ -188,7 +234,7 @@ pub fn render_search<'a>(
             Span::styled(
                 search_number_input,
                 Style::default()
-                    .fg(Color::Green)
+                    .fg(theme.search_number.0)
                     .add_modifier(Modifier::BOLD),
             ),
         ]));
@@ -262,6 +308,6 @@ pub fn render_search_prompt<'a>(user_input: &'a str) -> Paragraph<'a> {
         Block::default()
             .title("Search")
             .borders(Borders::ALL)
-            .style(Style::default().fg(Color::Yellow)),
+            .style(Style::default().fg(Color::White)),
     )
 }

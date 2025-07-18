@@ -1,0 +1,20 @@
+{
+  "home_text": "Rgb(0,120,215)",
+  "home_box": "Rgb(0,120,215)",
+  "playlist_number": "Rgb(50,50,215)",
+  "playlist_name": "Rgb(51,232,199)",
+  "playlist_box": "Rgb(255,255,255)",
+  "account_info": "Rgb(125,125,125)",
+  "account_link": "Rgb(180,180,180)",
+  "account_auth_success": "Rgb(0,255,0)",
+  "account_auth_failure": "Rgb(255,0,0)",
+  "account_box": "White",
+  "command_text_odd": "Gray",
+  "command_text_even": "Blue",
+  "command_box": "White",
+  "search_box": "White",
+  "search_number": "Rgb(50,50,215)",
+  "search_name": "Rgb(51,232,199)",
+  "search_uploader": "Rgb(50,50,215)",
+  "search_duration": "Rgb(125,125,125)"
+}
