@@ -1,3 +1,5 @@
+use std::os::linux::raw::stat;
+
 use crate::state::get_token;
 use crate::utilities;
 use crate::utilities::play_playlist;
@@ -28,6 +30,7 @@ pub struct AppState {
     pub authenticated: bool,
     pub active_menu_item: MenuItem,
     pub playlists: Vec<(String, String)>,
+    pub search_result: Vec<(String, String, String, String)>,
     pub playlist_number_input: String,
     pub playlist_selection_mode: bool,
 }
@@ -55,13 +58,33 @@ pub async fn event_handler(
             KeyCode::Char('h') => state.active_menu_item = MenuItem::Home,
             KeyCode::Char('v') => state.active_menu_item = MenuItem::Videos,
 
+            KeyCode::Char('s') => {
+                state.active_menu_item = MenuItem::Search;
+
+                let input = read_search_query("Search: ")?;
+                let query: &str = &input;
+                let maybe_results = if let Some(token) = get_token() {
+                    utilities::search_videos(token.access_token().secret(), query)
+                        .await
+                        .ok()
+                } else {
+                    let _ = std::fs::write("tui_debug.log", "No token available\n");
+                    None
+                };
+
+                if let Some(new) = maybe_results {
+                    state.search_result = new;
+                } else {
+                    state
+                        .messages
+                        .push("❌ Failed to fetch playlists".to_string());
+                }
+            }
+
             KeyCode::Char('p') => {
-                let _ = std::fs::write("tui_debug.log", "Pressed 'p' key handler triggered\n");
                 state.active_menu_item = MenuItem::Playlists;
 
                 let maybe_playlists = if let Some(token) = get_token() {
-                    let _ =
-                        std::fs::write("tui_debug.log", "Token found, calling list_playlists\n");
                     utilities::list_playlists(token.access_token().secret())
                         .await
                         .ok()
@@ -127,11 +150,45 @@ pub async fn event_handler(
                     .push("Playlist selection cancelled.".to_string());
             }
 
-            KeyCode::Char('s') => state.active_menu_item = MenuItem::Search,
+            KeyCode::Char('ű') => state.active_menu_item = MenuItem::Search,
             _ => {}
         },
         _ => {}
     }
 
     Ok(false)
+}
+
+use crossterm::terminal;
+use std::io::{self, Write};
+
+pub fn read_search_query(prompt: &str) -> io::Result<String> {
+    terminal::disable_raw_mode().map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::Other,
+            format!("disable_raw_mode error: {:?}", e),
+        )
+    })?;
+
+    print!("{}", prompt);
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    terminal::enable_raw_mode().map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::Other,
+            format!("enable_raw_mode error: {:?}", e),
+        )
+    })?;
+
+    if input.ends_with('\n') {
+        input.pop();
+        if input.ends_with('\r') {
+            input.pop();
+        }
+    }
+
+    Ok(input)
 }

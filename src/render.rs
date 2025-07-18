@@ -1,3 +1,6 @@
+use crossterm::terminal;
+use std::io::{self, Write};
+
 use tui::{
     layout::Alignment,
     style::{Color, Modifier, Style},
@@ -111,23 +114,6 @@ pub fn render_accounts<'a>(messages: &'a [String]) -> Paragraph<'a> {
         )
 }
 
-pub fn render_search<'a>() -> Paragraph<'a> {
-    Paragraph::new(vec![
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw(
-            "You will hopefully be able to search YouTube here",
-        )]),
-    ])
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::Blue))
-            .title("Search")
-            .border_type(BorderType::Plain),
-    )
-}
-
 pub fn render_commands<'a>() -> Paragraph<'a> {
     Paragraph::new(vec![
         Spans::from(vec![Span::raw("")]),
@@ -155,4 +141,119 @@ pub fn render_commands<'a>() -> Paragraph<'a> {
             .title("Commands")
             .border_type(BorderType::Plain),
     )
+}
+
+pub fn render_search<'a>(search_results: &'a [(String, String, String, String)]) -> Paragraph<'a> {
+    let mut lines: Vec<Spans> = if search_results.is_empty() {
+        vec![Spans::from(vec![Span::raw("No search results found.")])]
+    } else {
+        search_results
+            .iter()
+            .enumerate()
+            .map(|(i, (title, duration_raw, uploader, _id))| {
+                let duration = parse_iso8601_duration(duration_raw);
+
+                Spans::from(vec![
+                    Span::raw(format!("{:02}. ", i + 1)),
+                    Span::styled(
+                        title,
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" by "),
+                    Span::styled(uploader, Style::default().fg(Color::Magenta)),
+                    Span::raw(format!(" [{}]", duration)),
+                ])
+            })
+            .collect()
+    };
+
+    Paragraph::new(lines)
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Search Results")
+                .border_type(tui::widgets::BorderType::Plain),
+        )
+}
+
+fn parse_iso8601_duration(duration: &str) -> String {
+    let mut hours = 0;
+    let mut minutes = 0;
+    let mut seconds = 0;
+
+    let mut num = String::new();
+    let mut chars = duration.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == 'P' || c == 'T' {
+            continue;
+        }
+
+        if c.is_digit(10) {
+            num.push(c);
+        } else {
+            match c {
+                'H' => {
+                    if let Ok(n) = num.parse() {
+                        hours = n;
+                    }
+                    num.clear();
+                }
+                'M' => {
+                    if let Ok(n) = num.parse() {
+                        minutes = n;
+                    }
+                    num.clear();
+                }
+                'S' => {
+                    if let Ok(n) = num.parse() {
+                        seconds = n;
+                    }
+                    num.clear();
+                }
+                _ => {}
+            }
+        }
+    }
+
+    if hours > 0 {
+        format!("{}:{:02}:{:02}", hours, minutes, seconds)
+    } else {
+        format!("{}:{:02}", minutes, seconds)
+    }
+}
+
+pub fn read_search_query(prompt: &str) -> io::Result<String> {
+    terminal::disable_raw_mode().map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::Other,
+            format!("disable_raw_mode error: {:?}", e),
+        )
+    })?;
+
+    print!("{}", prompt);
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    terminal::enable_raw_mode().map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::Other,
+            format!("enable_raw_mode error: {:?}", e),
+        )
+    })?;
+
+    if input.ends_with('\n') {
+        input.pop();
+        if input.ends_with('\r') {
+            input.pop();
+        }
+    }
+
+    Ok(input)
 }

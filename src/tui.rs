@@ -45,6 +45,7 @@ pub async fn tui_render() -> Result<()> {
         authenticated: false,
         active_menu_item: MenuItem::Home,
         playlists: vec![],
+        search_result: vec![],
         playlist_number_input: String::new(),
         playlist_selection_mode: false,
     };
@@ -174,7 +175,7 @@ pub async fn tui_render() -> Result<()> {
                     rect.render_widget(render::render_accounts(&state.messages), chunks[1]);
                 }
                 MenuItem::Search => {
-                    rect.render_widget(render::render_search(), chunks[1]);
+                    rect.render_widget(render::render_search(&state.search_result), chunks[1]);
                 }
                 MenuItem::Commands => {
                     rect.render_widget(render::render_commands(), chunks[1]);
