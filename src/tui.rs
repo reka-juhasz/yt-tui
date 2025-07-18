@@ -51,6 +51,8 @@ pub async fn tui_render() -> Result<()> {
         playlist_selection_mode: false,
         search_input: String::new(),
         search_typing: false,
+        search_number_input: String::new(),
+        search_selection_mode: false,
     };
     enable_raw_mode().expect("can run in raw mode");
 
@@ -183,7 +185,12 @@ pub async fn tui_render() -> Result<()> {
                         chunks[1],
                     );
                     rect.render_widget(
-                        render::render_search(&state.search_result, state.search_attempted),
+                        render::render_search(
+                            &state.search_result,
+                            state.search_attempted,
+                            state.search_selection_mode,
+                            &state.search_number_input,
+                        ),
                         chunks[1],
                     );
                 }

@@ -146,8 +146,10 @@ pub fn render_commands<'a>() -> Paragraph<'a> {
 pub fn render_search<'a>(
     search_results: &'a [(String, String, String, String)],
     search_attempted: bool,
+    search_selection_mode: bool,
+    search_number_input: &'a str,
 ) -> Paragraph<'a> {
-    let lines: Vec<Spans> = if !search_attempted {
+    let mut lines: Vec<Spans> = if !search_attempted {
         vec![Spans::from(Span::styled(
             "Type and press Enter to search...",
             Style::default().fg(Color::DarkGray),
@@ -179,6 +181,18 @@ pub fn render_search<'a>(
             })
             .collect()
     };
+
+    if search_selection_mode {
+        lines.push(Spans::from(vec![
+            Span::raw("Select video by number: "),
+            Span::styled(
+                search_number_input,
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
 
     Paragraph::new(lines)
         .alignment(Alignment::Left)

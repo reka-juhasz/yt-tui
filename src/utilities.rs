@@ -116,6 +116,33 @@ pub fn play_song(link: &str) {
     }
 }
 
+pub fn play_song_by_id(video_id: &str) {
+    let link = format!("https://www.youtube.com/watch?v={}", video_id);
+
+    match get_audio_url(&link) {
+        Ok(audio_url) => {
+            let status = Command::new("mpv")
+                .args([
+                    "--no-video",
+                    "--really-quiet",
+                    "--no-config",
+                    "--idle=no",
+                    &audio_url,
+                ])
+                .status();
+
+            match status {
+                Ok(status) if status.success() => {}
+                Ok(status) => eprintln!("❌ mpv exited with status: {:?}", status.code()),
+                Err(e) => eprintln!("❌ Failed to start mpv: {}", e),
+            }
+        }
+        Err(e) => {
+            eprintln!("⚠️ Failed to get audio stream: {}", e);
+        }
+    }
+}
+
 pub async fn list_playlists(access_token: &str) -> Result<Vec<(String, String)>> {
     let url =
         "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true&maxResults=50";

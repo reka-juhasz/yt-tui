@@ -36,6 +36,9 @@ pub struct AppState {
     pub search_input: String,
     pub search_attempted: bool,
     pub search_typing: bool,
+
+    pub search_selection_mode: bool,
+    pub search_number_input: String,
 }
 
 pub async fn event_handler(
@@ -81,14 +84,54 @@ pub async fn event_handler(
                 }
             }
 
-            KeyCode::Char('s') if !state.search_typing => {
-                state.active_menu_item = MenuItem::Search;
-                state.search_input.clear();
-                state.search_result.clear();
-                state.search_attempted = false;
-                state.search_typing = true;
+            KeyCode::Char('b') if state.active_menu_item == MenuItem::Search => {
+                state.search_selection_mode = true;
+                state.search_number_input.clear();
             }
 
+            KeyCode::Char(digit) if state.search_selection_mode && digit.is_ascii_digit() => {
+                if state.search_number_input.len() < 2 {
+                    state.search_number_input.push(digit);
+                }
+            }
+
+            KeyCode::Enter if state.search_selection_mode => {
+                if let Ok(idx) = state.search_number_input.parse::<usize>() {
+                    if idx > 0 && idx <= state.search_result.len() {
+                        if let Some(token) = get_token() {
+                            if let Some((_title, _duration, _uploader, video_id)) =
+                                state.search_result.get(idx - 1)
+                            {
+                                let access_token_str = token.access_token().secret();
+
+                                utilities::play_song_by_id(video_id);
+
+                                state.messages.push(format!("Playing video {}", video_id));
+                            } else {
+                                state.messages.push("Video not found.".to_string());
+                            }
+                        } else {
+                            state.messages.push("No valid token.".to_string());
+                        }
+                    } else {
+                        state
+                            .messages
+                            .push("Video number out of range.".to_string());
+                    }
+                } else {
+                    state.messages.push("Invalid number input.".to_string());
+                }
+
+                state.search_selection_mode = false;
+                state.search_number_input.clear();
+            }
+            KeyCode::Esc if state.search_selection_mode => {
+                state.search_selection_mode = false;
+                state.search_number_input.clear();
+                state
+                    .messages
+                    .push("Search selection cancelled.".to_string());
+            }
             KeyCode::Esc if state.active_menu_item == MenuItem::Search && state.search_typing => {
                 state.search_typing = false;
                 state.search_input.clear();
@@ -138,9 +181,11 @@ pub async fn event_handler(
             }
 
             KeyCode::Char('b') => {
-                state.active_menu_item = MenuItem::Playlists;
-                state.playlist_selection_mode = true;
-                state.playlist_number_input.clear();
+                if state.active_menu_item == MenuItem::Playlists {
+                    state.active_menu_item = MenuItem::Playlists;
+                    state.playlist_selection_mode = true;
+                    state.playlist_number_input.clear();
+                }
             }
 
             KeyCode::Char(digit) if state.playlist_selection_mode && digit.is_ascii_digit() => {
