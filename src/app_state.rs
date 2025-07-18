@@ -35,6 +35,7 @@ pub struct AppState {
     pub playlist_selection_mode: bool,
     pub search_input: String,
     pub search_attempted: bool,
+    pub search_typing: bool,
 }
 
 pub async fn event_handler(
@@ -44,7 +45,9 @@ pub async fn event_handler(
 ) -> Result<bool> {
     match event {
         Event::Input(key_event) => match key_event.code {
-            KeyCode::Char(c) if state.active_menu_item == MenuItem::Search => {
+            KeyCode::Char(c)
+                if state.active_menu_item == MenuItem::Search && state.search_typing =>
+            {
                 state.search_input.push(c);
             }
 
@@ -52,9 +55,11 @@ pub async fn event_handler(
                 state.active_menu_item = MenuItem::Search;
                 state.search_input.clear(); // reset previous input
                 state.search_result.clear(); // clear old results
+                state.search_attempted = false;
+                state.search_typing = true;
             }
 
-            KeyCode::Enter if state.active_menu_item == MenuItem::Search => {
+            KeyCode::Enter if state.active_menu_item == MenuItem::Search && state.search_typing => {
                 state.search_attempted = true;
                 if let Some(token) = get_token() {
                     let maybe_results = utilities::search_videos(
@@ -76,7 +81,22 @@ pub async fn event_handler(
                 }
             }
 
-            KeyCode::Backspace if state.active_menu_item == MenuItem::Search => {
+            KeyCode::Char('s') if !state.search_typing => {
+                state.active_menu_item = MenuItem::Search;
+                state.search_input.clear();
+                state.search_result.clear();
+                state.search_attempted = false;
+                state.search_typing = true;
+            }
+
+            KeyCode::Esc if state.active_menu_item == MenuItem::Search && state.search_typing => {
+                state.search_typing = false;
+                state.search_input.clear();
+            }
+
+            KeyCode::Backspace
+                if state.active_menu_item == MenuItem::Search && state.search_typing =>
+            {
                 state.search_input.pop();
             }
 

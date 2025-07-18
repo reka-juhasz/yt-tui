@@ -50,6 +50,7 @@ pub async fn tui_render() -> Result<()> {
         playlist_number_input: String::new(),
         playlist_selection_mode: false,
         search_input: String::new(),
+        search_typing: false,
     };
     enable_raw_mode().expect("can run in raw mode");
 
