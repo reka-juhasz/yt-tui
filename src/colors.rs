@@ -22,6 +22,13 @@ impl<'de> Deserialize<'de> for MyColor {
 /// Your theme struct uses MyColor instead of Color directly
 #[derive(Debug, Deserialize)]
 pub struct Theme {
+    pub tui_lines: MyColor,
+    pub active_menu_item: MyColor,
+    pub other_menu_items: MyColor,
+    pub tabs_basic: MyColor,
+    pub tabs_highlight: MyColor,
+
+    //////////////////////
     pub home_text: MyColor,
     pub home_box: MyColor,
     pub playlist_number: MyColor,

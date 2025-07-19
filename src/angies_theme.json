@@ -1,0 +1,26 @@
+{
+  "tui_lines": "Rgb(180,115,220)",
+  "active_menu_item": "Rgb(255,180,255)",
+  "other_menu_items": "Rgb(150,90,190)",
+  "tabs_basic": "Rgb(230,130,255)",
+  "tabs_highlight": "Rgb(230,130,255)",
+  "home_text": "Rgb(255,180,255)",
+  "home_box": "Rgb(110,80,140)",
+  "playlist_number": "Rgb(255,180,255)",
+  "playlist_name": "Rgb(180,160,255)",
+  "playlist_box": "Rgb(110,80,140)",
+  "account_info": "Rgb(255,180,255)",
+  "account_link": "Rgb(120,70,170)",
+  "account_auth_success": "Rgb(200,255,245)",
+  "account_auth_failure": "Rgb(255,130,190)",
+  "account_box": "Rgb(110,80,140)",
+  "command_text_odd": "Rgb(190,100,230)",
+  "command_text_even": "Rgb(160,80,200)",
+  "command_box": "Rgb(110,80,140)",
+  "search_box": "Rgb(110,80,140)",
+  "search_number": "Rgb(255,180,255)",
+  "search_name": "Rgb(230,130,255)",
+  "search_uploader": "Rgb(150,90,190)",
+  "search_duration": "Rgb(220,255,255)"
+}
+

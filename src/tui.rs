@@ -58,7 +58,7 @@ pub async fn tui_render() -> Result<()> {
         search_selection_mode: false,
     };
 
-    let mut theme = colors::load_theme_from_file("test_color.json")?;
+    let mut theme = colors::load_theme_from_file("balints_theme.json")?;
     enable_raw_mode().expect("can run in raw mode");
 
     let (tx, rx) = mpsc::channel();
@@ -147,10 +147,10 @@ pub async fn tui_render() -> Result<()> {
                         Span::styled(
                             first,
                             Style::default()
-                                .fg(Color::Yellow)
+                                .fg(theme.active_menu_item.0)
                                 .add_modifier(Modifier::UNDERLINED),
                         ),
-                        Span::styled(rest, Style::default().fg(Color::White)),
+                        Span::styled(rest, Style::default().fg(theme.other_menu_items.0)),
                     ])
                 })
                 .collect();
@@ -158,8 +158,8 @@ pub async fn tui_render() -> Result<()> {
             let tabs = Tabs::new(menu)
                 .select(state.active_menu_item.into())
                 .block(Block::default().title("Menu").borders(Borders::ALL))
-                .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().fg(Color::Yellow))
+                .style(Style::default().fg(theme.tabs_basic.0))
+                .highlight_style(Style::default().fg(theme.tabs_highlight.0))
                 .divider(Span::raw("|"));
 
             rect.render_widget(tabs, chunks[0]);

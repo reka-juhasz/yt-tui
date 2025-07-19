@@ -1,6 +1,4 @@
 use crate::colors::Theme;
-use crossterm::terminal;
-use std::io::{self, Write};
 use tui::{
     layout::Alignment,
     style::{Color, Modifier, Style},
@@ -79,6 +77,7 @@ pub fn render_playlists<'a>(
             Block::default()
                 .borders(Borders::ALL)
                 .title("Playlists")
+                .style(Style::default().fg(theme.playlist_box.0))
                 .border_type(tui::widgets::BorderType::Plain),
         )
 }
@@ -94,7 +93,7 @@ pub fn render_videos<'a>() -> Paragraph<'a> {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .style(Style::default().fg(Color::Blue))
+            .style(Style::default().fg(Color::White))
             .title("Videos")
             .border_type(BorderType::Plain),
     )
@@ -247,6 +246,7 @@ pub fn render_search<'a>(
             Block::default()
                 .borders(Borders::ALL)
                 .title("Search Results")
+                .style(Style::default().fg(theme.search_box.0))
                 .border_type(tui::widgets::BorderType::Plain),
         )
 }
