@@ -58,7 +58,7 @@ pub async fn tui_render() -> Result<()> {
         search_selection_mode: false,
     };
 
-    let mut theme = colors::load_theme_from_file("balints_theme.json")?;
+    let mut theme = colors::load_theme_from_file("themes/rekas_theme.json")?;
     enable_raw_mode().expect("can run in raw mode");
 
     let (tx, rx) = mpsc::channel();
