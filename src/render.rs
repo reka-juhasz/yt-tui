@@ -8,57 +8,46 @@ use tui::{
     text::{Span, Spans},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
-
 pub fn render_home<'a>(
     theme: &Theme,
-    themes: &'a [(String)],
+    themes: &'a [String],
     theme_selection_mode: bool,
     theme_number_input: &'a str,
 ) -> Paragraph<'a> {
-    Paragraph::new(vec![
-        Spans::from(vec![Span::raw("")]),
+    // Start with the welcome message and an empty line
+    let mut lines: Vec<Spans> = vec![
         Spans::from(vec![Span::styled(
             "Welcome to the YouTube TUI client!",
-            Style::default().fg(theme.home_text.0), // Text color here
+            Style::default().fg(theme.home_text.0),
         )]),
-    ])
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
-            .title("Home")
-            .style(Style::default().fg(theme.home_box.0))
-            .border_type(BorderType::Plain),
-    );
+        Spans::from(vec![Span::raw("")]),
+    ];
 
-    let mut lines: Vec<Spans> = if themes.is_empty() {
-        vec![Spans::from(vec![Span::styled(
+    // Add the theme list or a message if it's empty
+    if themes.is_empty() {
+        lines.push(Spans::from(vec![Span::styled(
             "Please press 'h' again to select your theme.",
             Style::default().fg(theme.account_auth_failure.0),
-        )])]
+        )]));
     } else {
-        themes
-            .iter()
-            .enumerate()
-            .map(|(i, (title))| {
-                Spans::from(vec![
-                    Span::styled(
-                        format!("{:02}. ", i + 1),
-                        Style::default().fg(theme.playlist_number.0),
-                    ),
-                    Span::styled(
-                        title,
-                        Style::default()
-                            .fg(theme.playlist_name.0)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(format!(" (ID: {})", i + 1)),
-                ])
-            })
-            .collect()
-    };
+        lines.extend(themes.iter().enumerate().map(|(i, title)| {
+            Spans::from(vec![
+                Span::styled(
+                    format!("{:02}. ", i + 1),
+                    Style::default().fg(theme.playlist_number.0),
+                ),
+                Span::styled(
+                    title,
+                    Style::default()
+                        .fg(theme.playlist_name.0)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(format!(" (ID: {})", i + 1)),
+            ])
+        }));
+    }
 
+    // If the user is selecting a theme, show the input prompt
     if theme_selection_mode {
         lines.push(Spans::from(vec![
             Span::raw("Select a theme by number: "),
@@ -71,6 +60,7 @@ pub fn render_home<'a>(
         ]));
     }
 
+    // Return the combined paragraph
     Paragraph::new(lines)
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: true })
@@ -79,7 +69,7 @@ pub fn render_home<'a>(
                 .borders(Borders::ALL)
                 .title("Themes")
                 .style(Style::default().fg(theme.playlist_box.0))
-                .border_type(tui::widgets::BorderType::Plain),
+                .border_type(BorderType::Plain),
         )
 }
 
@@ -221,7 +211,7 @@ pub fn render_commands<'a>(theme: &Theme) -> Paragraph<'a> {
             Style::default().fg(theme.command_text_odd.0),
         )]),
         Spans::from(vec![Span::styled(
-            "b: to bind a playlist to be the selected playlist",
+            "b: to bind a playlist or theme to be the selected playlist or theme",
             Style::default().fg(theme.command_text_even.0),
         )]),
         Spans::from(vec![Span::styled(
