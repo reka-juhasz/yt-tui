@@ -1,3 +1,7 @@
+use std::fs;
+use std::io;
+use std::path::Path;
+
 use anyhow::anyhow;
 use anyhow::{Context, Result};
 use reqwest::Client;
@@ -324,4 +328,25 @@ pub async fn search_videos(
         .collect();
 
     Ok(results)
+}
+
+pub fn get_theme_files() -> io::Result<Vec<String>> {
+    let theme_dir = Path::new("themes");
+    let mut paths: Vec<String> = Vec::new();
+
+    for entry in fs::read_dir(theme_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if let Some(ext) = path.extension() {
+            if ext == "json" {
+                if let Some(path_str) = path.to_str() {
+                    paths.push(path_str.to_string());
+                }
+            }
+        }
+    }
+
+    paths.sort(); // Optional: sort alphabetically
+    Ok(paths)
 }

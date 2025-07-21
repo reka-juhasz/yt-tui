@@ -1,12 +1,17 @@
-use std::os::linux::raw::stat;
-
+use crate::colors::load_theme_from_file;
+use crate::colors::{self, Theme};
 use crate::state::get_token;
 use crate::utilities;
+
 use crate::utilities::play_playlist;
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 use crossterm::{event::KeyCode, terminal::disable_raw_mode};
 use oauth2::TokenResponse;
+use std::fs;
+use std::io;
+use std::os::linux::raw::stat;
+use std::path::Path;
 
 use tui::{backend::CrosstermBackend, Terminal};
 pub enum Event<I> {
@@ -39,6 +44,11 @@ pub struct AppState {
 
     pub search_selection_mode: bool,
     pub search_number_input: String,
+    pub selected_theme: Theme,
+    pub themes: Vec<String>,
+    pub theme_selection_mode: bool,
+    pub theme_number_input: String,
+    pub theme_selected_path: String,
 }
 
 pub async fn event_handler(
@@ -156,8 +166,15 @@ pub async fn event_handler(
             }
 
             KeyCode::Char('c') => state.active_menu_item = MenuItem::Commands,
-            KeyCode::Char('h') => state.active_menu_item = MenuItem::Home,
+
             KeyCode::Char('v') => state.active_menu_item = MenuItem::Videos,
+
+            KeyCode::Char('h') => {
+                state.active_menu_item = MenuItem::Home;
+
+                let maybe_themes = utilities::get_theme_files();
+                state.themes = maybe_themes?;
+            }
 
             KeyCode::Char('p') => {
                 state.active_menu_item = MenuItem::Playlists;
@@ -186,12 +203,54 @@ pub async fn event_handler(
                     state.playlist_selection_mode = true;
                     state.playlist_number_input.clear();
                 }
+
+                if state.active_menu_item == MenuItem::Home {
+                    state.active_menu_item = MenuItem::Home;
+                    state.theme_selection_mode = true;
+                    state.playlist_number_input.clear();
+                }
             }
 
             KeyCode::Char(digit) if state.playlist_selection_mode && digit.is_ascii_digit() => {
                 if state.playlist_number_input.len() < 2 {
                     state.playlist_number_input.push(digit);
                 }
+            }
+
+            KeyCode::Char(digit) if state.theme_selection_mode && digit.is_ascii_digit() => {
+                if state.theme_number_input.len() < 2 {
+                    state.theme_number_input.push(digit);
+                }
+            }
+
+            KeyCode::Enter if state.theme_selection_mode => {
+                if let Ok(idx) = state.theme_number_input.parse::<usize>() {
+                    if idx > 0 && idx <= state.themes.len() {
+                        if let Some(path) = state.themes.get(idx - 1) {
+                            match colors::load_theme_from_file(path) {
+                                Ok(new_theme) => {
+                                    state.selected_theme = new_theme;
+                                    state
+                                        .messages
+                                        .push(format!("Theme {} loaded successfully.", path));
+                                }
+                                Err(e) => {
+                                    state.messages.push(format!("Failed to load theme: {}", e));
+                                }
+                            }
+                        } else {
+                            state.messages.push("Theme not found.".to_string());
+                        }
+                    } else {
+                        state
+                            .messages
+                            .push("Theme number out of range.".to_string());
+                    }
+                } else {
+                    state.messages.push("Invalid number input.".to_string());
+                }
+                state.theme_selection_mode = false;
+                state.theme_number_input.clear();
             }
 
             KeyCode::Enter if state.playlist_selection_mode => {
@@ -237,4 +296,32 @@ pub async fn event_handler(
     }
 
     Ok(false)
+}
+
+pub fn get_theme_files() -> io::Result<Vec<(String, String)>> {
+    let theme_dir = Path::new("themes");
+    let mut entries: Vec<String> = Vec::new();
+
+    for entry in fs::read_dir(theme_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if let Some(ext) = path.extension() {
+            if ext == "json" {
+                if let Some(path_str) = path.to_str() {
+                    entries.push(path_str.to_string());
+                }
+            }
+        }
+    }
+
+    entries.sort(); // Optional: sort alphabetically
+
+    let formatted: Vec<(String, String)> = entries
+        .iter()
+        .enumerate()
+        .map(|(i, path)| (format!("{:02}", i + 1), path.clone()))
+        .collect();
+
+    Ok(formatted)
 }

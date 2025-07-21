@@ -21,6 +21,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     tui::tui_render().await?;
+    //let theme_paths = utilities::get_theme_files()?;
 
+    //for (i, path) in theme_paths.iter().enumerate() {
+    //  println!("{:02}: {}", i + 1, path);
+    //}
     Ok(())
 }

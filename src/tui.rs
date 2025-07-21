@@ -55,10 +55,15 @@ pub async fn tui_render() -> Result<()> {
         search_input: String::new(),
         search_typing: false,
         search_number_input: String::new(),
+        themes: vec![],
         search_selection_mode: false,
+        theme_selection_mode: false,
+        selected_theme: Theme::new(),
+        theme_number_input: String::new(),
+        theme_selected_path: "themes/rekas_theme.json".to_string(),
     };
 
-    let mut theme = colors::load_theme_from_file("themes/rekas_theme.json")?;
+    state.selected_theme = colors::load_theme_from_file(&state.theme_selected_path)?;
     enable_raw_mode().expect("can run in raw mode");
 
     let (tx, rx) = mpsc::channel();
@@ -147,10 +152,13 @@ pub async fn tui_render() -> Result<()> {
                         Span::styled(
                             first,
                             Style::default()
-                                .fg(theme.active_menu_item.0)
+                                .fg(state.selected_theme.active_menu_item.0)
                                 .add_modifier(Modifier::UNDERLINED),
                         ),
-                        Span::styled(rest, Style::default().fg(theme.other_menu_items.0)),
+                        Span::styled(
+                            rest,
+                            Style::default().fg(state.selected_theme.other_menu_items.0),
+                        ),
                     ])
                 })
                 .collect();
@@ -158,20 +166,28 @@ pub async fn tui_render() -> Result<()> {
             let tabs = Tabs::new(menu)
                 .select(state.active_menu_item.into())
                 .block(Block::default().title("Menu").borders(Borders::ALL))
-                .style(Style::default().fg(theme.tabs_basic.0))
-                .highlight_style(Style::default().fg(theme.tabs_highlight.0))
+                .style(Style::default().fg(state.selected_theme.tabs_basic.0))
+                .highlight_style(Style::default().fg(state.selected_theme.tabs_highlight.0))
                 .divider(Span::raw("|"));
 
             rect.render_widget(tabs, chunks[0]);
 
             match state.active_menu_item {
                 MenuItem::Home => {
-                    rect.render_widget(render::render_home(&theme), chunks[1]);
+                    rect.render_widget(
+                        render::render_home(
+                            &state.selected_theme,
+                            &state.themes,
+                            state.theme_selection_mode,
+                            &state.theme_number_input,
+                        ),
+                        chunks[1],
+                    );
                 }
                 MenuItem::Playlists => {
                     rect.render_widget(
                         render::render_playlists(
-                            &theme,
+                            &state.selected_theme,
                             &state.playlists,
                             state.playlist_selection_mode,
                             &state.playlist_number_input,
@@ -183,7 +199,10 @@ pub async fn tui_render() -> Result<()> {
                     rect.render_widget(render::render_videos(), chunks[1]);
                 }
                 MenuItem::Account => {
-                    rect.render_widget(render::render_accounts(&theme, &state.messages), chunks[1]);
+                    rect.render_widget(
+                        render::render_accounts(&state.selected_theme, &state.messages),
+                        chunks[1],
+                    );
                 }
                 MenuItem::Search => {
                     rect.render_widget(
@@ -192,7 +211,7 @@ pub async fn tui_render() -> Result<()> {
                     );
                     rect.render_widget(
                         render::render_search(
-                            &theme,
+                            &state.selected_theme,
                             &state.search_result,
                             state.search_attempted,
                             state.search_selection_mode,
@@ -202,7 +221,7 @@ pub async fn tui_render() -> Result<()> {
                     );
                 }
                 MenuItem::Commands => {
-                    rect.render_widget(render::render_commands(&theme), chunks[1]);
+                    rect.render_widget(render::render_commands(&state.selected_theme), chunks[1]);
                 }
             }
         })?;

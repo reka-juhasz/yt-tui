@@ -1,3 +1,6 @@
+use crate::colors;
+use crate::colors::load_theme_from_file;
+
 use crate::colors::Theme;
 use tui::{
     layout::Alignment,
@@ -6,7 +9,12 @@ use tui::{
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
-pub fn render_home<'a>(theme: &Theme) -> Paragraph<'a> {
+pub fn render_home<'a>(
+    theme: &Theme,
+    themes: &'a [(String)],
+    theme_selection_mode: bool,
+    theme_number_input: &'a str,
+) -> Paragraph<'a> {
     Paragraph::new(vec![
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::styled(
@@ -22,7 +30,57 @@ pub fn render_home<'a>(theme: &Theme) -> Paragraph<'a> {
             .title("Home")
             .style(Style::default().fg(theme.home_box.0))
             .border_type(BorderType::Plain),
-    )
+    );
+
+    let mut lines: Vec<Spans> = if themes.is_empty() {
+        vec![Spans::from(vec![Span::styled(
+            "Please press 'h' again to select your theme.",
+            Style::default().fg(theme.account_auth_failure.0),
+        )])]
+    } else {
+        themes
+            .iter()
+            .enumerate()
+            .map(|(i, (title))| {
+                Spans::from(vec![
+                    Span::styled(
+                        format!("{:02}. ", i + 1),
+                        Style::default().fg(theme.playlist_number.0),
+                    ),
+                    Span::styled(
+                        title,
+                        Style::default()
+                            .fg(theme.playlist_name.0)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(format!(" (ID: {})", i + 1)),
+                ])
+            })
+            .collect()
+    };
+
+    if theme_selection_mode {
+        lines.push(Spans::from(vec![
+            Span::raw("Select a theme by number: "),
+            Span::styled(
+                theme_number_input,
+                Style::default()
+                    .fg(theme.playlist_number.0)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+
+    Paragraph::new(lines)
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true })
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Themes")
+                .style(Style::default().fg(theme.playlist_box.0))
+                .border_type(tui::widgets::BorderType::Plain),
+        )
 }
 
 pub fn render_playlists<'a>(

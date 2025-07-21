@@ -48,6 +48,36 @@ pub struct Theme {
     pub search_uploader: MyColor,
     pub search_duration: MyColor,
 }
+impl Theme {
+    pub fn new() -> Self {
+        Self {
+            tui_lines: MyColor(Color::White),
+            active_menu_item: MyColor(Color::White),
+            other_menu_items: MyColor(Color::White),
+            tabs_basic: MyColor(Color::White),
+            tabs_highlight: MyColor(Color::White),
+
+            home_text: MyColor(Color::White),
+            home_box: MyColor(Color::White),
+            playlist_number: MyColor(Color::White),
+            playlist_name: MyColor(Color::White),
+            playlist_box: MyColor(Color::White),
+            account_info: MyColor(Color::White),
+            account_link: MyColor(Color::White),
+            account_auth_success: MyColor(Color::Green),
+            account_auth_failure: MyColor(Color::Red),
+            account_box: MyColor(Color::White),
+            command_text_odd: MyColor(Color::Gray),
+            command_text_even: MyColor(Color::White),
+            command_box: MyColor(Color::White),
+            search_box: MyColor(Color::White),
+            search_number: MyColor(Color::White),
+            search_name: MyColor(Color::White),
+            search_uploader: MyColor(Color::White),
+            search_duration: MyColor(Color::White),
+        }
+    }
+}
 
 /// Parses a string into a tui::style::Color
 fn parse_color(s: &str) -> Option<Color> {
