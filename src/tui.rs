@@ -32,11 +32,11 @@ use tui::{
 impl From<MenuItem> for usize {
     fn from(input: MenuItem) -> usize {
         match input {
-            MenuItem::Home => 0,
-            MenuItem::Playlists => 1,
-            MenuItem::Videos => 2,
-            MenuItem::Account => 3,
-            MenuItem::Commands => 4,
+            MenuItem::Home => 2,
+            MenuItem::Playlists => 3,
+            MenuItem::Videos => 4,
+            MenuItem::Account => 0,
+            MenuItem::Commands => 1,
             MenuItem::Search => 5,
         }
     }
