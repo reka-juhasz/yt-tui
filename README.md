@@ -24,10 +24,39 @@ After creating your credentials.txt, you can start the tui by running 'cargo run
 
 #### Current capabilities 
 
-This project is still actively in development, and as such, does not have all its functionalities implemented. Right now, you are able to log into your YouTube account, see your playlists, play them and skip songs in them. In the future, I would like to add functionalities that make using the TUI feel nicer. Some of these planned features include:
+This project is still actively in development, and as such, does not have all its functionalities implemented. Right now, you are able to log into your YouTube account, see your playlists, play them and skip songs in them. You are also able to search and play videos as well. In the future, I would like to add functionalities that make using the TUI feel nicer. Some of these planned features include:
   - Stopping and resuming playback 
   - Adjusting volume
-  - Searching YouTube and playing one of the results
-  - Customizable color schemes
+  - Skipping videos and playing the previous video 
   - A nicer looking UI
-Sadly, some features cannot be implemented because of the YouTube API doesn't support them, a good example for this is fetching the data from your Home feed or the Subscriptions feed. I am a university student, and while i will try my best to make this project as functional as I can, development might slow down after September. 
+Sadly, some features cannot be implemented because of the YouTube API doesn't support them, a good example for this is fetching the data from your Home feed or the Subscriptions feed. I am a university student, and while i will try my best to make this project as functional as I can, development might slow down after September.
+
+#### Customization
+
+By going to the Home tab and pressing 'h' again, you can see all the existing themes for the TUI. Press 'b' and enter the number of the theme you wish to use and press Enter. The theme change should be visible immediately. You can also define your own themes by putting them in the /src/themes folder. If you do so, please follow this .json format, to insure your theme is applicable and won't crash the TUI due to parsing errors:
+
+{
+  "tui_lines": "Rgb(0,120,200)",
+  "active_menu_item": "Rgb(180,225,255)",
+  "other_menu_items": "Rgb(0,105,185)",
+  "tabs_basic": "Rgb(70,180,230)",
+  "tabs_highlight": "Rgb(70,180,230)",
+  "home_text": "Rgb(180,225,255)",
+  "home_box": "Rgb(40,60,90)",
+  "playlist_number": "Rgb(180,225,255)",
+  "playlist_name": "Rgb(80,200,240)",
+  "playlist_box": "Rgb(40,60,90)",
+  "account_info": "Rgb(180,225,255)",
+  "account_link": "Rgb(55,80,110)",
+  "account_auth_success": "Rgb(210,245,255)",
+  "account_auth_failure": "Rgb(100,130,160)",
+  "account_box": "Rgb(40,60,90)",
+  "command_text_odd": "Rgb(0,115,190)",
+  "command_text_even": "Rgb(0,100,170)",
+  "command_box": "Rgb(40,60,90)",
+  "search_box": "Rgb(40,60,90)",
+  "search_number": "Rgb(180,225,255)",
+  "search_name": "Rgb(70,180,230)",
+  "search_uploader": "Rgb(0,105,185)",
+  "search_duration": "Rgb(220,250,255)"
+}
