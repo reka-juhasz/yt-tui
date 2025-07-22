@@ -10,6 +10,7 @@ use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use url::Url;
 use webbrowser;
 pub type OAuthToken =
     StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>;
@@ -107,18 +108,26 @@ where
     display_message("Please follow the pop-up tab in your browser:");
     display_message(auth_url.as_str());
     webbrowser::open(auth_url.as_str());
-    display_message("Paste the code you receive:");
 
-    let mut code = String::new();
-    std::io::stdin().read_line(&mut code)?;
-    //trims code and exchanges it for the token
-    let code = code.trim();
-    //exchanging the provided code for the access token
+    display_message("Paste the full URL you received:");
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input)?;
+
+    // Parse the URL and extract the 'code' parameter
+    let input = input.trim();
+    let parsed_url = Url::parse(input)?;
+    let code = parsed_url
+        .query_pairs()
+        .find(|(key, _)| key == "code")
+        .map(|(_, value)| value.to_string())
+        .ok_or_else(|| anyhow::anyhow!("No 'code' parameter found in the URL"))?;
+
+    // Use the extracted code to get the token
     let token = client
-        .exchange_code(AuthorizationCode::new(code.to_string()))
+        .exchange_code(AuthorizationCode::new(code))
         .request_async(async_http_client)
         .await?;
-
     save_token(&token)?;
     display_message(
         "Authentication complete, you may need to restart the tui for changes to take effect!",
