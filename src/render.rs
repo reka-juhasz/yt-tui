@@ -1,6 +1,3 @@
-use crate::colors;
-use crate::colors::load_theme_from_file;
-
 use crate::colors::Theme;
 use tui::{
     layout::Alignment,

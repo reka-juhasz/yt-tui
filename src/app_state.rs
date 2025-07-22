@@ -1,8 +1,9 @@
 use crate::colors::load_theme_from_file;
 use crate::colors::{self, Theme};
+use crate::state;
 use crate::state::get_token;
+use crate::state::load_and_set_token;
 use crate::utilities;
-
 use crate::utilities::play_playlist;
 use anyhow::Result;
 use crossterm::event::KeyEvent;
@@ -56,6 +57,10 @@ pub async fn event_handler(
     state: &mut AppState,
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
 ) -> Result<bool> {
+    if let Err(e) = state::load_and_set_token() {
+        eprintln!("Failed to load token: {}", e);
+    }
+
     match event {
         Event::Input(key_event) => match key_event.code {
             KeyCode::Char(c)
@@ -324,4 +329,10 @@ pub fn get_theme_files() -> io::Result<Vec<(String, String)>> {
         .collect();
 
     Ok(formatted)
+}
+
+pub fn load_and_set_theme_from_file(path: &str) -> Result<Theme> {
+    let json = fs::read_to_string(path)?;
+    let theme: Theme = serde_json::from_str(&json)?;
+    Ok(theme)
 }

@@ -16,9 +16,9 @@ use std::io::Write;
 //unsused imports are sometimes used in testing and are not to be removed
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    if let Err(e) = state::load_and_set_token() {
-        eprintln!("Failed to load token: {}", e);
-    }
+    //if let Err(e) = state::load_and_set_token() {
+    //  eprintln!("Failed to load token: {}", e);
+    //}
 
     tui::tui_render().await?;
     //let theme_paths = utilities::get_theme_files()?;

@@ -2,9 +2,8 @@ use crate::app_state;
 use crate::app_state::AppState;
 use crate::app_state::Event;
 use crate::app_state::MenuItem;
+
 use crate::authenticate::authenticate;
-use crate::colors;
-use crate::colors::load_theme_from_file;
 use crate::colors::Theme;
 use crate::render;
 use anyhow::Result;
@@ -22,10 +21,10 @@ use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 use tui::{
     backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
+    layout::{Constraint, Direction, Layout},
+    style::{Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph, Tabs},
+    widgets::{Block, Borders, Tabs},
     Terminal,
 };
 
@@ -63,7 +62,7 @@ pub async fn tui_render() -> Result<()> {
         theme_selected_path: "themes/rekas_theme.json".to_string(),
     };
 
-    state.selected_theme = colors::load_theme_from_file(&state.theme_selected_path)?;
+    state.selected_theme = app_state::load_and_set_theme_from_file(&state.theme_selected_path)?;
     enable_raw_mode().expect("can run in raw mode");
 
     let (tx, rx) = mpsc::channel();
