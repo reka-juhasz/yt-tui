@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Result};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
 use oauth2::{
@@ -6,38 +6,38 @@ use oauth2::{
     Scope, StandardTokenResponse, TokenResponse, TokenUrl,
 };
 use serde::Deserialize;
-use std::fs;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::Path;
+use tiny_http::{Response, Server};
 use url::Url;
 use webbrowser;
+
 pub type OAuthToken =
     StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>;
 
 #[derive(Debug, Deserialize)]
-struct Installed {
-    client_id: String,
-    client_secret: String,
-    redirect_uris: Vec<String>,
+pub struct Installed {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uris: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Credentials {
-    installed: Installed,
+    pub installed: Installed,
 }
 
 pub fn read_credentials(path: &str) -> Result<Credentials> {
-    let file = File::open(path)?; //opens file
-    let reader = BufReader::new(file); //creates buffer
-    let creds = serde_json::from_reader(reader)?; //opens buffer as a variable
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let creds = serde_json::from_reader(reader)?;
     Ok(creds)
 }
 
 pub fn save_token(token: &OAuthToken) -> Result<()> {
-    let json = serde_json::to_string_pretty(token)?; //takes the oauth token and converts
-                                                     //it into json
-    fs::write("token.json", json)?; //writes out
+    let json = serde_json::to_string_pretty(token)?;
+    fs::write("token.json", json)?;
     Ok(())
 }
 
@@ -49,29 +49,21 @@ pub fn load_token() -> Result<OAuthToken> {
 
 pub async fn authenticate<F>(mut display_message: F) -> Result<OAuthToken>
 where
-    F: FnMut(&str), //closure taking slices
+    F: FnMut(&str),
 {
-    let creds = read_credentials("credentials.json")?; //reads in user creds
+    let creds = read_credentials("credentials.json")?;
+    let client_id = ClientId::new(creds.installed.client_id.clone());
+    let client_secret = ClientSecret::new(creds.installed.client_secret.clone());
 
-    let client_id = ClientId::new(creds.installed.client_id.clone()); //clones client id
-    let client_secret = ClientSecret::new(creds.installed.client_secret.clone()); //clones client secret
-
-    let redirect_uri = creds
-        .installed
-        .redirect_uris
-        .get(0)
-        .context("No redirect URI found")?
-        .to_string(); //creating redirect uri
-
-    let auth_url = AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())?; //auth
-                                                                                              //and
-                                                                                              //token
-                                                                                              //urls
+    // Localhost redirect with port 8080
+    let redirect_uri = "http://127.0.0.1:8080";
+    let auth_url = AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())?;
     let token_url = TokenUrl::new("https://oauth2.googleapis.com/token".to_string())?;
 
     let client = BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
-        .set_redirect_uri(RedirectUrl::new(redirect_uri)?); //builds the oauth client
+        .set_redirect_uri(RedirectUrl::new(redirect_uri.to_string())?);
 
+    // Try refreshing existing token if available
     if Path::new("token.json").exists() {
         let token = load_token()?;
         if let Some(refresh_token) = token.refresh_token() {
@@ -79,58 +71,56 @@ where
                 .exchange_refresh_token(&RefreshToken::new(refresh_token.secret().to_string()))
                 .request_async(async_http_client)
                 .await?;
-
             save_token(&new_token)?;
             display_message("Token refreshed successfully.");
-            return Ok(new_token); //if there's already a token, it tries refreshing
+            return Ok(new_token);
         }
     }
-    //only getting here if no access token or no refresh token found
-    let (mut auth_url, _csrf_token) = client
-        .authorize_url(|| CsrfToken::new_random()) //cross site
-        //request
-        //forgery
-        //token
-        //generated
-        //if i feel
-        //like i need
-        //to use it
+
+    // Build authorization URL
+    let (auth_url, _csrf_token) = client
+        .authorize_url(|| CsrfToken::new_random())
         .add_scope(Scope::new(
-            "https://www.googleapis.com/auth/youtube".to_string(), //scope
+            "https://www.googleapis.com/auth/youtube".to_string(),
         ))
-        .url(); //builds authorization url
+        .add_extra_param("access_type", "offline")
+        .add_extra_param("prompt", "consent")
+        .url();
 
-    auth_url.set_query(Some(&format!(
-        "{}&access_type=offline&prompt=consent",
-        auth_url.query().unwrap_or("")
-    )));
+    println!("Full authorization URL:\n{}", auth_url.as_str());
 
-    display_message("Please follow the pop-up tab in your browser:");
-    display_message(auth_url.as_str());
-    webbrowser::open(auth_url.as_str());
+    // Open browser
+    display_message("Opening your browser to authenticate...");
+    webbrowser::open(auth_url.as_str())?;
 
-    display_message("Paste the full URL you received:");
+    // Start local HTTP server to capture redirect
+    let server = Server::http("127.0.0.1:8080")
+        .map_err(|e| anyhow!("Failed to start local HTTP server: {}", e))?;
+    display_message("Waiting for authentication response...");
 
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input)?;
+    let request = server.recv()?; // blocks until redirect
 
-    // Parse the URL and extract the 'code' parameter
-    let input = input.trim();
-    let parsed_url = Url::parse(input)?;
-    let code = parsed_url
+    // Extract code from query parameters
+    let url = Url::parse(&format!("http://localhost{}", request.url()))?;
+    let code = url
         .query_pairs()
-        .find(|(key, _)| key == "code")
-        .map(|(_, value)| value.to_string())
-        .ok_or_else(|| anyhow::anyhow!("No 'code' parameter found in the URL"))?;
+        .find(|(k, _)| k == "code")
+        .map(|(_, v)| v.to_string())
+        .ok_or_else(|| anyhow!("No 'code' parameter found in redirect"))?;
 
-    // Use the extracted code to get the token
+    // Respond to the browser
+    let response = Response::from_string(
+        "Authentication complete! You can close this browser tab and return to the app.",
+    );
+    request.respond(response)?;
+
+    // Exchange code for token
     let token = client
         .exchange_code(AuthorizationCode::new(code))
         .request_async(async_http_client)
         .await?;
     save_token(&token)?;
-    display_message(
-        "Authentication complete, you may need to restart the tui for changes to take effect!",
-    );
+    display_message("Authentication complete!");
+
     Ok(token)
 }

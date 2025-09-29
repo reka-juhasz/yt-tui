@@ -13,7 +13,6 @@ use crossterm::{
     terminal::enable_raw_mode,
 };
 
-// Reuse the Theme from colors
 use std::io;
 use std::sync::mpsc;
 use std::thread;
@@ -29,6 +28,8 @@ use tui::{
 };
 
 impl From<MenuItem> for usize {
+    //numbering the menu items with a usize (variable used for indexing
+    //collections)
     fn from(input: MenuItem) -> usize {
         match input {
             MenuItem::Home => 2,
@@ -43,6 +44,7 @@ impl From<MenuItem> for usize {
 
 pub async fn tui_render() -> Result<()> {
     let mut state = AppState {
+        //inital app state
         messages: vec![],
         authenticated: false,
         active_menu_item: MenuItem::Home,
@@ -62,17 +64,41 @@ pub async fn tui_render() -> Result<()> {
         theme_selected_path: "themes/rekas_theme.json".to_string(),
     };
 
-    state.selected_theme = app_state::load_and_set_theme_from_file(&state.theme_selected_path)?;
-    enable_raw_mode().expect("can run in raw mode");
+    state.selected_theme = app_state::load_and_set_theme_from_file(&state.theme_selected_path)?; //this
+                                                                                                 //might
+                                                                                                 //be
+                                                                                                 //redundant
+                                                                                                 //here,
+                                                                                                 //theme
+                                                                                                 //is
+                                                                                                 //set
+                                                                                                 //on
+                                                                                                 //initialization
+    enable_raw_mode().expect("can run in raw mode"); //putting terminal in raw mode
 
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel(); //sender
+                                    //and
+                                    //reciever
+                                    //events
+                                    //initialized,
+                                    //these
+                                    //alloww
+                                    //communication
+                                    //between
+                                    //the user
+                                    //and the
+                                    //app
     let tick_rate = Duration::from_millis(200);
-    let tx_input = tx.clone();
+    let tx_input = tx.clone(); //cloning tx to avoid ownership issues
 
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
+    let stdout = io::stdout(); //standard output
+    let backend = CrosstermBackend::new(stdout); //backend for
+                                                 //drawing onto
+                                                 //the terminal
+    let mut terminal = Terminal::new(backend)?; //actual terminal
+                                                //initialized with
+                                                //crossterm backend
+    terminal.clear()?; //clearnig it just in case
 
     let menu_titles = vec![
         "Account",
@@ -81,11 +107,13 @@ pub async fn tui_render() -> Result<()> {
         "Playlists",
         "Videos",
         "Search",
-    ];
+    ]; //collection of menuitems
 
     thread::spawn(move || {
+        //thread for calculating tics, moves tx to keep it in scope
         let mut last_tick = Instant::now();
         loop {
+            //this is shamelessly stolen from a tui tutorial, sorry
             let timeout = tick_rate
                 .checked_sub(last_tick.elapsed())
                 .unwrap_or_else(|| Duration::from_secs(0));
@@ -103,8 +131,8 @@ pub async fn tui_render() -> Result<()> {
         }
     });
 
-    let rt = Runtime::new()?;
-    let mut authenticated = false;
+    let rt = Runtime::new()?; //new runtime
+    let mut authenticated = false; //assumes auth token is expired on startup
 
     loop {
         if state.active_menu_item == MenuItem::Account && !authenticated {
@@ -112,35 +140,33 @@ pub async fn tui_render() -> Result<()> {
             state.messages.clear();
 
             let tx_msg = tx.clone();
-
+            //handling the terminal while authenticating, diasbling raw mode to allow pasting of
+            //auth url
             rt.spawn(async move {
+                //new thread spawn for authentication
                 let _ = crossterm::terminal::disable_raw_mode();
                 let result = authenticate(|msg| {
                     let _ = tx_msg.send(Event::Message(msg.to_string()));
                 })
                 .await;
-                let _ = crossterm::terminal::enable_raw_mode();
+                let _ = crossterm::terminal::enable_raw_mode(); //raw mode enabled if
+                                                                //authentication successul
 
                 if let Err(e) = result {
                     let _ = tx_msg.send(Event::Message(format!("Authentication error: {}", e)));
                 }
             });
         }
+        //drawing terminal begins here!
 
         terminal.draw(|rect| {
             let size = rect.size();
-
+            //the layout is vertical with 2 parts, one that has a set height of 3 rows and the other takes
+            //the rest
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(2)
-                .constraints(
-                    [
-                        Constraint::Length(3),
-                        Constraint::Min(2),
-                        Constraint::Length(3),
-                    ]
-                    .as_ref(),
-                )
+                .constraints([Constraint::Length(3), Constraint::Min(2)].as_ref())
                 .split(size);
 
             let menu = menu_titles
