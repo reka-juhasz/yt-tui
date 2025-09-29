@@ -29,7 +29,6 @@ This project is still actively in development, and as such, does not have all it
   - Adjusting volume
   - Skipping videos and playing the previous video 
   - A nicer looking UI
-Sadly, some features cannot be implemented because of the YouTube API doesn't support them, a good example for this is fetching the data from your Home feed or the Subscriptions feed. I am a university student, and while i will try my best to make this project as functional as I can, development might slow down after September.
 
 #### Customization
 
