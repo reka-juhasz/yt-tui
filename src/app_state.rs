@@ -27,7 +27,6 @@ pub enum MenuItem {
     Commands,
     Home,
     Playlists,
-    Videos,
     Search,
 }
 
@@ -171,8 +170,6 @@ pub async fn event_handler(
             }
 
             KeyCode::Char('c') => state.active_menu_item = MenuItem::Commands,
-
-            KeyCode::Char('v') => state.active_menu_item = MenuItem::Videos,
 
             KeyCode::Char('h') => {
                 state.active_menu_item = MenuItem::Home;

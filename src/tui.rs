@@ -34,7 +34,6 @@ impl From<MenuItem> for usize {
         match input {
             MenuItem::Home => 2,
             MenuItem::Playlists => 3,
-            MenuItem::Videos => 4,
             MenuItem::Account => 0,
             MenuItem::Commands => 1,
             MenuItem::Search => 5,
@@ -100,14 +99,7 @@ pub async fn tui_render() -> Result<()> {
                                                 //crossterm backend
     terminal.clear()?; //clearnig it just in case
 
-    let menu_titles = vec![
-        "Account",
-        "Commands",
-        "Home",
-        "Playlists",
-        "Videos",
-        "Search",
-    ]; //collection of menuitems
+    let menu_titles = vec!["Account", "Commands", "Home", "Playlists", "Search"]; //collection of menuitems
 
     thread::spawn(move || {
         //thread for calculating tics, moves tx to keep it in scope
@@ -220,9 +212,7 @@ pub async fn tui_render() -> Result<()> {
                         chunks[1],
                     );
                 }
-                MenuItem::Videos => {
-                    rect.render_widget(render::render_videos(), chunks[1]);
-                }
+
                 MenuItem::Account => {
                     rect.render_widget(
                         render::render_accounts(&state.selected_theme, &state.messages),
