@@ -3,25 +3,23 @@ use serde::Deserialize;
 use std::fs;
 use tui::style::Color;
 
-/// Newtype wrapper around tui::style::Color with custom Deserialize impl
+//newtype wrapper around tui::style::Color with custom Deserialize impl
 #[derive(Debug, Clone, Copy)]
 pub struct MyColor(pub Color);
 
-impl<'de> Deserialize<'de> for MyColor {
-    fn deserialize<D>(deserializer: D) -> Result<MyColor, D::Error>
-    where
-        D: serde::Deserializer<'de>,
+impl<'de> Deserialize<'de> for MyColor 
     {
+    fn deserialize<D>(deserializer: D) -> Result<MyColor, D::Error> where D: serde::Deserializer<'de>,
+        {
         let s = String::deserialize(deserializer)?;
-        parse_color(&s)
-            .map(MyColor)
-            .ok_or_else(|| serde::de::Error::custom(format!("Invalid color: {}", s)))
+        parse_color(&s).map(MyColor).ok_or_else(|| serde::de::Error::custom(format!("Invalid color: {}", s)))
+        }
     }
-}
 
-/// Your theme struct uses MyColor instead of Color directly
+//theme has colors for most ui components, allowing for customization
 #[derive(Debug, Deserialize)]
-pub struct Theme {
+pub struct Theme 
+{
     pub tui_lines: MyColor,
     pub active_menu_item: MyColor,
     pub other_menu_items: MyColor,
@@ -48,15 +46,18 @@ pub struct Theme {
     pub search_uploader: MyColor,
     pub search_duration: MyColor,
 }
-impl Theme {
-    pub fn new() -> Self {
-        Self {
+//theme impl for storing the themes read in from .json file
+impl Theme 
+{
+    pub fn new() -> Self 
+    {
+        Self 
+        {
             tui_lines: MyColor(Color::White),
             active_menu_item: MyColor(Color::White),
             other_menu_items: MyColor(Color::White),
             tabs_basic: MyColor(Color::White),
             tabs_highlight: MyColor(Color::White),
-
             home_text: MyColor(Color::White),
             home_box: MyColor(Color::White),
             playlist_number: MyColor(Color::White),
@@ -79,10 +80,12 @@ impl Theme {
     }
 }
 
-/// Parses a string into a tui::style::Color
-fn parse_color(s: &str) -> Option<Color> {
+/// parsing custom colors and also can process rgb values 
+fn parse_color(s: &str) -> Option<Color> 
+{
     let s = s.trim().to_lowercase();
-    match s.as_str() {
+    match s.as_str() 
+    {
         "black" => Some(Color::Black),
         "red" => Some(Color::Red),
         "green" => Some(Color::Green),
@@ -100,9 +103,11 @@ fn parse_color(s: &str) -> Option<Color> {
         "lightcyan" => Some(Color::LightCyan),
         "white" => Some(Color::White),
         _ => {
-            if let Some(rgb) = s.strip_prefix("rgb(").and_then(|s| s.strip_suffix(")")) {
+            if let Some(rgb) = s.strip_prefix("rgb(").and_then(|s| s.strip_suffix(")")) 
+            {
                 let parts: Vec<_> = rgb.split(',').collect();
-                if parts.len() == 3 {
+                if parts.len() == 3 
+                {
                     let r = parts[0].trim().parse().ok()?;
                     let g = parts[1].trim().parse().ok()?;
                     let b = parts[2].trim().parse().ok()?;
@@ -115,7 +120,8 @@ fn parse_color(s: &str) -> Option<Color> {
 }
 
 /// Loads a Theme from a JSON file
-pub fn load_theme_from_file(path: &str) -> Result<Theme> {
+pub fn load_theme_from_file(path: &str) -> Result<Theme> 
+{
     let json = fs::read_to_string(path)?;
     let theme: Theme = serde_json::from_str(&json)?;
     Ok(theme)
