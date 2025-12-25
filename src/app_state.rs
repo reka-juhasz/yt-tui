@@ -3,9 +3,7 @@
 
 use crate::colors::load_theme_from_file;
 use crate::colors::{self, Theme};
-use crate::state;
-use crate::state::get_token;
-use crate::state::load_and_set_token;
+
 use crate::utilities;
 use crate::utilities::play_playlist;
 use anyhow::Result;
@@ -16,6 +14,12 @@ use std::fs;
 use std::io;
 use std::os::linux::raw::stat;
 use std::path::Path;
+use crate::authenticate::{load_token, OAuthToken};
+use once_cell::sync::OnceCell;
+use std::sync::Mutex;
+static OAUTH_TOKEN: OnceCell<Mutex<Option<OAuthToken>>> = OnceCell::new();
+
+
 
 use tui::{backend::CrosstermBackend, Terminal};
 pub enum Event<I> {
@@ -66,7 +70,7 @@ pub async fn event_handler(
 
     //handling token errors 
     {
-    if let Err(e) = state::load_and_set_token() {
+    if let Err(e) = load_and_set_token() {
         eprintln!("Failed to load token: {}", e);
     }
 
@@ -371,4 +375,22 @@ pub fn load_and_set_theme_from_file(path: &str) -> Result<Theme> {
     let json = fs::read_to_string(path)?;
     let theme: Theme = serde_json::from_str(&json)?;
     Ok(theme)
+}
+
+pub fn set_token(token: OAuthToken) {
+    OAUTH_TOKEN
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap()
+        .replace(token);
+}
+
+pub fn get_token() -> Option<OAuthToken> {
+    OAUTH_TOKEN.get()?.lock().unwrap().clone()
+}
+
+pub fn load_and_set_token() -> anyhow::Result<()> {
+    let token = load_token()?;
+    set_token(token);
+    Ok(())
 }

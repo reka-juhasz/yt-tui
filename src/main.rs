@@ -3,7 +3,6 @@ mod app_state;
 mod authenticate;
 mod colors;
 mod render;
-mod state;
 mod tui;
 mod utilities;
 
