@@ -9,7 +9,6 @@ use reqwest::Url;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Write;
-//file writing imports stay to help w debugging
 use std::process::Command;
 #[derive(Debug, Deserialize)]
 pub struct PlaylistListResponse {
@@ -110,12 +109,12 @@ pub fn play_song(link: &str) {
 
             match status {
                 Ok(status) if status.success() => {}
-                Ok(status) => eprintln!("❌ mpv exited with status: {:?}", status.code()),
-                Err(e) => eprintln!("❌ Failed to start mpv: {}", e),
+                Ok(status) => eprintln!("Mpv exited with status: {:?}", status.code()),
+                Err(e) => eprintln!("Failed to start mpv: {}", e),
             }
         }
         Err(e) => {
-            eprintln!("⚠️ Failed to get audio stream: {}", e);
+            eprintln!("Failed to get audio stream: {}", e);
         }
     }
 }
@@ -137,12 +136,12 @@ pub fn play_song_by_id(video_id: &str) {
 
             match status {
                 Ok(status) if status.success() => {}
-                Ok(status) => eprintln!("❌ mpv exited with status: {:?}", status.code()),
-                Err(e) => eprintln!("❌ Failed to start mpv: {}", e),
+                Ok(status) => eprintln!("Mpv exited with status: {:?}", status.code()),
+                Err(e) => eprintln!("Failed to start mpv: {}", e),
             }
         }
         Err(e) => {
-            eprintln!("⚠️ Failed to get audio stream: {}", e);
+            eprintln!("Failed to get audio stream: {}", e);
         }
     }
 }
@@ -241,7 +240,7 @@ pub async fn play_playlist(access_token: &str, playlist_id: &str) -> Result<()> 
     }
 
     for (title, url) in videos {
-        println!("▶️ Now playing: {}", title);
+        println!(" Now playing: {}", title);
         play_song(&url);
     }
 

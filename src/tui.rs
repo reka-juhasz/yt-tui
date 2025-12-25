@@ -1,47 +1,36 @@
+//the tui is responsible for initializing backend components and rendering crossterm widgets
+//functionally, the tui_render is the main
 use crate::app_state;
 use crate::app_state::AppState;
 use crate::app_state::Event;
 use crate::app_state::MenuItem;
-
 use crate::authenticate::authenticate;
 use crate::colors::Theme;
 use crate::render;
 use anyhow::Result;
-
-use crossterm::{
-    event::{self, Event as CEvent},
-    terminal::enable_raw_mode,
-};
-
+use crossterm::{event::{self, Event as CEvent},terminal::enable_raw_mode,};
 use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
-use tui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, Borders, Tabs},
-    Terminal,
-};
+use tui::{backend::CrosstermBackend,layout::{Constraint, Direction, Layout},style::{Modifier, Style},text::{Span, Spans},widgets::{Block, Borders, Tabs},Terminal,};
 
 impl From<MenuItem> for usize {
-    //numbering the menu items with a usize (variable used for indexing
-    //collections)
+    //numbering the menu items with a usize (variable used for indexing collections)
     fn from(input: MenuItem) -> usize {
         match input {
-            MenuItem::Home => 2,
-            MenuItem::Playlists => 3,
             MenuItem::Account => 0,
             MenuItem::Commands => 1,
-            MenuItem::Search => 5,
+            MenuItem::Home => 2,
+            MenuItem::Playlists => 3,
+            MenuItem::Search => 4,
         }
     }
 }
-
+//main function
 pub async fn tui_render() -> Result<()> {
+    //creating a mutable (!!) appstate instance
     let mut state = AppState {
         //inital app state
         messages: vec![],
@@ -60,46 +49,24 @@ pub async fn tui_render() -> Result<()> {
         theme_selection_mode: false,
         selected_theme: Theme::new(),
         theme_number_input: String::new(),
-        theme_selected_path: "themes/rekas_theme.json".to_string(),
+        theme_selected_path: "themes/blue_theme.json".to_string(),
     };
 
-    state.selected_theme = app_state::load_and_set_theme_from_file(&state.theme_selected_path)?; //this
-                                                                                                 //might
-                                                                                                 //be
-                                                                                                 //redundant
-                                                                                                 //here,
-                                                                                                 //theme
-                                                                                                 //is
-                                                                                                 //set
-                                                                                                 //on
-                                                                                                 //initialization
+    state.selected_theme = app_state::load_and_set_theme_from_file(&state.theme_selected_path)?; 
     enable_raw_mode().expect("can run in raw mode"); //putting terminal in raw mode
-
-    let (tx, rx) = mpsc::channel(); //sender
-                                    //and
-                                    //reciever
-                                    //events
-                                    //initialized,
-                                    //these
-                                    //alloww
-                                    //communication
-                                    //between
-                                    //the user
-                                    //and the
-                                    //app
+    //sender and reciever events initialized,these allow communication between the user and the app
+    let (tx, rx) = mpsc::channel(); 
     let tick_rate = Duration::from_millis(200);
-    let tx_input = tx.clone(); //cloning tx to avoid ownership issues
+    //cloning tx to avoid ownership issues
+    let tx_input = tx.clone();
 
-    let stdout = io::stdout(); //standard output
-    let backend = CrosstermBackend::new(stdout); //backend for
-                                                 //drawing onto
-                                                 //the terminal
-    let mut terminal = Terminal::new(backend)?; //actual terminal
-                                                //initialized with
-                                                //crossterm backend
-    terminal.clear()?; //clearnig it just in case
-
-    let menu_titles = vec!["Account", "Commands", "Home", "Playlists", "Search"]; //collection of menuitems
+    let stdout = io::stdout();
+    //backend for drawing onto the terminal
+    let backend = CrosstermBackend::new(stdout); 
+    let mut terminal = Terminal::new(backend)?; 
+    terminal.clear()?; 
+    //collection of menuitems
+    let menu_titles = vec!["Account", "Commands", "Home", "Playlists", "Search"]; 
 
     thread::spawn(move || {
         //thread for calculating tics, moves tx to keep it in scope
@@ -122,9 +89,10 @@ pub async fn tui_render() -> Result<()> {
             }
         }
     });
-
-    let rt = Runtime::new()?; //new runtime
-    let mut authenticated = false; //assumes auth token is expired on startup
+    //new runtime
+    let rt = Runtime::new()?;
+    //assumes auth token is expired on startup
+    let mut authenticated = false; 
 
     loop {
         if state.active_menu_item == MenuItem::Account && !authenticated {
@@ -132,38 +100,34 @@ pub async fn tui_render() -> Result<()> {
             state.messages.clear();
 
             let tx_msg = tx.clone();
-            //handling the terminal while authenticating, diasbling raw mode to allow pasting of
-            //auth url
+            //handling the terminal while authenticating, diasbling raw mode to allow pasting of auth url
             rt.spawn(async move {
                 //new thread spawn for authentication
                 let _ = crossterm::terminal::disable_raw_mode();
-                let result = authenticate(|msg| {
-                    let _ = tx_msg.send(Event::Message(msg.to_string()));
-                })
-                .await;
-                let _ = crossterm::terminal::enable_raw_mode(); //raw mode enabled if
-                                                                //authentication successul
+                let result = authenticate(|msg| {let _ = tx_msg.send(Event::Message(msg.to_string()));}).await;
+                //raw mode enabled ifauthentication successul
+                let _ = crossterm::terminal::enable_raw_mode(); 
 
                 if let Err(e) = result {
                     let _ = tx_msg.send(Event::Message(format!("Authentication error: {}", e)));
                 }
             });
         }
-        //drawing terminal begins here!
-
-        terminal.draw(|rect| {
+        //drawing terminal begins here
+        terminal.draw(|rect| 
+            {
             let size = rect.size();
-            //the layout is vertical with 2 parts, one that has a set height of 3 rows and the other takes
-            //the rest
+            //the layout is vertical with 2 parts, one that has a set height of 3 rows and the other takes the lest
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(2)
                 .constraints([Constraint::Length(3), Constraint::Min(2)].as_ref())
                 .split(size);
-
+            //adding menu items, with colors and modifiers    
             let menu = menu_titles
                 .iter()
-                .map(|t| {
+                .map(|t| 
+                    {
                     let (first, rest) = t.split_at(1);
                     Spans::from(vec![
                         Span::styled(
@@ -177,9 +141,8 @@ pub async fn tui_render() -> Result<()> {
                             Style::default().fg(state.selected_theme.other_menu_items.0),
                         ),
                     ])
-                })
-                .collect();
-
+                }).collect();
+            //adding tabs with styling as well    
             let tabs = Tabs::new(menu)
                 .select(state.active_menu_item.into())
                 .block(Block::default().title("Menu").borders(Borders::ALL))
@@ -188,9 +151,11 @@ pub async fn tui_render() -> Result<()> {
                 .divider(Span::raw("|"));
 
             rect.render_widget(tabs, chunks[0]);
-
-            match state.active_menu_item {
-                MenuItem::Home => {
+            //match case for the currently active menu item    
+            match state.active_menu_item 
+            {
+                MenuItem::Home => 
+                {
                     rect.render_widget(
                         render::render_home(
                             &state.selected_theme,
@@ -201,7 +166,8 @@ pub async fn tui_render() -> Result<()> {
                         chunks[1],
                     );
                 }
-                MenuItem::Playlists => {
+                MenuItem::Playlists => 
+                {
                     rect.render_widget(
                         render::render_playlists(
                             &state.selected_theme,
@@ -213,13 +179,15 @@ pub async fn tui_render() -> Result<()> {
                     );
                 }
 
-                MenuItem::Account => {
+                MenuItem::Account => 
+                {
                     rect.render_widget(
                         render::render_accounts(&state.selected_theme, &state.messages),
                         chunks[1],
                     );
                 }
-                MenuItem::Search => {
+                MenuItem::Search => 
+                {
                     rect.render_widget(
                         render::render_search_prompt(&state.search_input),
                         chunks[1],
@@ -235,15 +203,19 @@ pub async fn tui_render() -> Result<()> {
                         chunks[1],
                     );
                 }
-                MenuItem::Commands => {
+                MenuItem::Commands => 
+                {
                     rect.render_widget(render::render_commands(&state.selected_theme), chunks[1]);
                 }
             }
         })?;
-
-        match rx.recv()? {
-            Event::Input(event) => {
-                if app_state::event_handler(Event::Input(event), &mut state, &mut terminal).await? {
+        //handling events
+        match rx.recv()? 
+        {   //input event handler from the app_state
+            Event::Input(event) => 
+            {
+                if app_state::event_handler(Event::Input(event), &mut state, &mut terminal).await? 
+                {
                     break Ok(());
                 }
             }
