@@ -1,3 +1,6 @@
+//app_state is the struct resposible for storing variables that control the app
+//and handles keypress events that change those variables
+
 use crate::colors::load_theme_from_file;
 use crate::colors::{self, Theme};
 use crate::state;
@@ -34,16 +37,18 @@ pub struct AppState {
     pub messages: Vec<String>,
     pub authenticated: bool,
     pub active_menu_item: MenuItem,
+
     pub playlists: Vec<(String, String)>,
-    pub search_result: Vec<(String, String, String, String)>,
     pub playlist_number_input: String,
     pub playlist_selection_mode: bool,
+
     pub search_input: String,
     pub search_attempted: bool,
     pub search_typing: bool,
-
+    pub search_result: Vec<(String, String, String, String)>,
     pub search_selection_mode: bool,
     pub search_number_input: String,
+
     pub selected_theme: Theme,
     pub themes: Vec<String>,
     pub theme_selection_mode: bool,
@@ -51,23 +56,31 @@ pub struct AppState {
     pub theme_selected_path: String,
 }
 
+//main keypress event handler for the tui
 pub async fn event_handler(
-    event: Event<KeyEvent>,
-    state: &mut AppState,
-    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-) -> Result<bool> {
+    event: Event<KeyEvent>, //the event occuring
+    state: &mut AppState, // the app state instance itself for changing variables
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, // the terminal instance
+
+    ) -> Result<bool> //returns a Result (Ok or Err) for error handling
+
+    //handling token errors 
+    {
     if let Err(e) = state::load_and_set_token() {
         eprintln!("Failed to load token: {}", e);
     }
 
+    //hanling keypress events
     match event {
         Event::Input(key_event) => match key_event.code {
+            //saving search input into app state if search  is active and the user is typing
             KeyCode::Char(c)
                 if state.active_menu_item == MenuItem::Search && state.search_typing =>
             {
                 state.search_input.push(c);
             }
-
+            
+            //going into search mode if s is pressed, clearing previous search data too
             KeyCode::Char('s') => {
                 state.active_menu_item = MenuItem::Search;
                 state.search_input.clear(); // reset previous input
@@ -76,205 +89,259 @@ pub async fn event_handler(
                 state.search_typing = true;
             }
 
-            KeyCode::Enter if state.active_menu_item == MenuItem::Search && state.search_typing => {
+            //starts the search itself if search mode is active and the user is typing
+
+            KeyCode::Enter if state.active_menu_item == MenuItem::Search && state.search_typing => 
+            {
+            
                 state.search_attempted = true;
-                if let Some(token) = get_token() {
-                    let maybe_results = utilities::search_videos(
-                        token.access_token().secret(),
-                        &state.search_input,
-                    )
-                    .await
-                    .ok();
-
-                    if let Some(new) = maybe_results {
+                //retriving oauth token for the search
+                if let Some(token)= get_token()                
+                    {
+                    let maybe_results = utilities::search_videos(token.access_token().secret(),
+                        &state.search_input).await.ok();
+                        //if the search_videos method returns something, it sets search_result to the results
+                    if let Some(new) = maybe_results 
+                        {
                         state.search_result = new;
-                    } else {
-                        state
-                            .messages
-                            .push("❌ Failed to search videos".to_string());
+                        }
+                    //sends error message if the search fails    
+                    else 
+                        {
+                        state.messages.push("Failed to search videos".to_string());
+                        }
                     }
-                } else {
-                    state.messages.push("❌ No token available".to_string());
-                }
-            }
 
-            KeyCode::Char('b') if state.active_menu_item == MenuItem::Search => {
+                else 
+                    {
+                    state.messages.push("No token available".to_string());
+                    }
+            }
+            //selection for search items
+            KeyCode::Char('b') if state.active_menu_item == MenuItem::Search => 
+            {
                 state.search_selection_mode = true;
                 state.search_number_input.clear();
             }
-
-            KeyCode::Char(digit) if state.search_selection_mode && digit.is_ascii_digit() => {
-                if state.search_number_input.len() < 2 {
+            //saving the number of search results for playback
+            KeyCode::Char(digit) if state.search_selection_mode && digit.is_ascii_digit() => 
+            {
+                if state.search_number_input.len() < 2 
+                {
                     state.search_number_input.push(digit);
                 }
             }
-
-            KeyCode::Enter if state.search_selection_mode => {
-                if let Ok(idx) = state.search_number_input.parse::<usize>() {
-                    if idx > 0 && idx <= state.search_result.len() {
-                        if let Some(token) = get_token() {
+            
+            //starting playback after selecting a search result by number
+            KeyCode::Enter if state.search_selection_mode => 
+            {
+                if let Ok(idx) = state.search_number_input.parse::<usize>() 
+                {
+                    //only attempting playback if the index makes sense
+                    if idx > 0 && idx <= state.search_result.len() 
+                    {
+                            //getting video and starting playback
                             if let Some((_title, _duration, _uploader, video_id)) =
                                 state.search_result.get(idx - 1)
                             {
-                                let access_token_str = token.access_token().secret();
-
                                 utilities::play_song_by_id(video_id);
-
                                 state.messages.push(format!("Playing video {}", video_id));
-                            } else {
+                            } 
+                            //error handling
+                            else 
+                            {
                                 state.messages.push("Video not found.".to_string());
                             }
-                        } else {
-                            state.messages.push("No valid token.".to_string());
-                        }
-                    } else {
-                        state
-                            .messages
-                            .push("Video number out of range.".to_string());
+                    
                     }
-                } else {
+                    //error handling here too 
+                    else {
+                        state.messages.push("Video number out of range.".to_string());
+                    }
+                } 
+                else 
+                {
                     state.messages.push("Invalid number input.".to_string());
                 }
+                //resetting selection variables
+                state.search_selection_mode = false;
+                state.search_number_input.clear();
+            }
 
+            //cancellation of selection by pressing Esc
+            KeyCode::Esc if state.search_selection_mode => 
+            {
                 state.search_selection_mode = false;
                 state.search_number_input.clear();
+                state.messages.push("Search selection cancelled.".to_string());
             }
-            KeyCode::Esc if state.search_selection_mode => {
-                state.search_selection_mode = false;
-                state.search_number_input.clear();
-                state
-                    .messages
-                    .push("Search selection cancelled.".to_string());
-            }
-            KeyCode::Esc if state.active_menu_item == MenuItem::Search && state.search_typing => {
+            //cancellation of searching
+            KeyCode::Esc if state.active_menu_item == MenuItem::Search && state.search_typing => 
+            {
                 state.search_typing = false;
                 state.search_input.clear();
             }
-
-            KeyCode::Backspace
-                if state.active_menu_item == MenuItem::Search && state.search_typing =>
+            //allows use of backspace while searching
+            KeyCode::Backspace if state.active_menu_item == MenuItem::Search && state.search_typing =>
             {
                 state.search_input.pop();
             }
-
-            KeyCode::Char('q') => {
+            //quitting
+            KeyCode::Char('q') => 
+            {
                 disable_raw_mode()?;
                 terminal.show_cursor()?;
                 return Ok(true);
             }
-
+            //changing into accounts mode
             KeyCode::Char('a') => {
                 state.messages.clear();
                 state.authenticated = false;
                 state.active_menu_item = MenuItem::Account;
             }
 
+            //changing into commands mode
             KeyCode::Char('c') => state.active_menu_item = MenuItem::Commands,
 
-            KeyCode::Char('h') => {
+            //changing into home mode
+            KeyCode::Char('h') => 
+            {
                 state.active_menu_item = MenuItem::Home;
-
                 let maybe_themes = utilities::get_theme_files();
                 state.themes = maybe_themes?;
             }
 
+            //changing to playlist mode and fetching users playlists
             KeyCode::Char('p') => {
                 state.active_menu_item = MenuItem::Playlists;
-
-                let maybe_playlists = if let Some(token) = get_token() {
-                    utilities::list_playlists(token.access_token().secret())
-                        .await
-                        .ok()
-                } else {
+                //attempts getting tokens and fetching playlists
+                let maybe_playlists = if let Some(token) = get_token() 
+                {
+                    utilities::list_playlists(token.access_token().secret()).await.ok()
+                } 
+                else
+                {
                     let _ = std::fs::write("tui_debug.log", "No token available\n");
                     None
                 };
-
-                if let Some(new) = maybe_playlists {
+                //putting the result of list_playlist into state.playlist if it returns data
+                if let Some(new) = maybe_playlists 
+                {
                     state.playlists = new;
-                } else {
-                    state
-                        .messages
-                        .push("❌ Failed to fetch playlists".to_string());
+                }
+
+                else 
+                {
+                    state.messages.push(" Failed to fetch playlists".to_string());
                 }
             }
-
-            KeyCode::Char('b') => {
-                if state.active_menu_item == MenuItem::Playlists {
+            //b is for binding in multiple modes
+            KeyCode::Char('b') => 
+            {
+                //binding in playlist mode 
+                if state.active_menu_item == MenuItem::Playlists 
+                {
                     state.active_menu_item = MenuItem::Playlists;
                     state.playlist_selection_mode = true;
                     state.playlist_number_input.clear();
                 }
-
-                if state.active_menu_item == MenuItem::Home {
+                //and in home mode for themes to use
+                if state.active_menu_item == MenuItem::Home 
+                {
                     state.active_menu_item = MenuItem::Home;
                     state.theme_selection_mode = true;
                     state.playlist_number_input.clear();
                 }
             }
-
-            KeyCode::Char(digit) if state.playlist_selection_mode && digit.is_ascii_digit() => {
-                if state.playlist_number_input.len() < 2 {
+            //saving numbers for playlist selection
+            KeyCode::Char(digit) if state.playlist_selection_mode && digit.is_ascii_digit() => 
+            {
+                if state.playlist_number_input.len() < 2 
+                {
                     state.playlist_number_input.push(digit);
                 }
             }
 
-            KeyCode::Char(digit) if state.theme_selection_mode && digit.is_ascii_digit() => {
-                if state.theme_number_input.len() < 2 {
+            //saving numbers for theme selection
+            KeyCode::Char(digit) if state.theme_selection_mode && digit.is_ascii_digit() => 
+            {
+                if state.theme_number_input.len() < 2 
+                {
                     state.theme_number_input.push(digit);
                 }
             }
-
-            KeyCode::Enter if state.theme_selection_mode => {
-                if let Ok(idx) = state.theme_number_input.parse::<usize>() {
-                    if idx > 0 && idx <= state.themes.len() {
-                        if let Some(path) = state.themes.get(idx - 1) {
-                            match colors::load_theme_from_file(path) {
-                                Ok(new_theme) => {
+            //changing theme by pressing enter after specifying number
+            KeyCode::Enter if state.theme_selection_mode => 
+            {
+                //parsing input
+                if let Ok(idx) = state.theme_number_input.parse::<usize>()
+                {   //seeing if number is smaller or equal to the number of themes present
+                    if idx > 0 && idx <= state.themes.len()
+                    {   //getting path and the themes 
+                        if let Some(path) = state.themes.get(idx - 1) 
+                        {
+                            match colors::load_theme_from_file(path) 
+                            {   //if theme selection is successful, state is updated
+                                Ok(new_theme) => 
+                                {
                                     state.selected_theme = new_theme;
-                                    state
-                                        .messages
-                                        .push(format!("Theme {} loaded successfully.", path));
+                                    state.messages.push(format!("Theme {} loaded successfully.", path));
                                 }
-                                Err(e) => {
+                                Err(e) => 
+                                {
                                     state.messages.push(format!("Failed to load theme: {}", e));
                                 }
                             }
-                        } else {
+                        }
+                        //error handling from here
+                        else 
+                        {
                             state.messages.push("Theme not found.".to_string());
                         }
-                    } else {
-                        state
-                            .messages
-                            .push("Theme number out of range.".to_string());
+                    } 
+                    else 
+                    {
+                        state.messages.push("Theme number out of range.".to_string());
                     }
-                } else {
+                } 
+                else 
+                {
                     state.messages.push("Invalid number input.".to_string());
                 }
                 state.theme_selection_mode = false;
                 state.theme_number_input.clear();
             }
 
-            KeyCode::Enter if state.playlist_selection_mode => {
-                if let Ok(idx) = state.playlist_number_input.parse::<usize>() {
-                    if idx > 0 && idx <= state.playlists.len() {
-                        if let Some(token) = get_token() {
-                            if let Some(playlist) = state.playlists.get(idx - 1) {
+            //pretty much the same logic but for playlist selection 
+            KeyCode::Enter if state.playlist_selection_mode => 
+            {
+                //if the chars entered are numbers and can be mapped to a playlist, playback will start
+                if let Ok(idx) = state.playlist_number_input.parse::<usize>() 
+                {
+                    if idx > 0 && idx <= state.playlists.len() 
+                    {
+                        if let Some(token) = get_token() 
+                        {
+                            if let Some(playlist) = state.playlists.get(idx - 1) 
+                            {
                                 let access_token_str = token.access_token().secret();
                                 play_playlist(access_token_str, &playlist.1).await?;
-                                state
-                                    .messages
-                                    .push(format!("Playing playlist: {}", playlist.0));
-                            } else {
+                                state.messages.push(format!("Playing playlist: {}", playlist.0));
+                            }
+                            //else statements from here are error handling 
+                            else 
+                            {
                                 state.messages.push("Playlist not found.".to_string());
                             }
-                        } else {
+                        } 
+                        else 
+                        {
                             state.messages.push("No valid token.".to_string());
                         }
-                    } else {
-                        state
-                            .messages
-                            .push("Playlist number out of range.".to_string());
+                    } 
+                    else 
+                    {
+                        state.messages.push("Playlist number out of range.".to_string());
                     }
                 } else {
                     state.messages.push("Invalid number input.".to_string());
@@ -282,52 +349,24 @@ pub async fn event_handler(
                 state.playlist_selection_mode = false;
                 state.playlist_number_input.clear();
             }
-
-            KeyCode::Esc if state.playlist_selection_mode => {
+            //Esc to stop playlist selection
+            KeyCode::Esc if state.playlist_selection_mode => 
+            {
                 state.playlist_selection_mode = false;
                 state.playlist_number_input.clear();
-                state
-                    .messages
-                    .push("Playlist selection cancelled.".to_string());
-            }
-
-            KeyCode::Char('ű') => state.active_menu_item = MenuItem::Search,
+                state.messages.push("Playlist selection cancelled.".to_string());
+            },
+            //do nothing on other key events
             _ => {}
         },
+        //do nothing on any other events
         _ => {}
     }
 
     Ok(false)
 }
 
-pub fn get_theme_files() -> io::Result<Vec<(String, String)>> {
-    let theme_dir = Path::new("themes");
-    let mut entries: Vec<String> = Vec::new();
-
-    for entry in fs::read_dir(theme_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if let Some(ext) = path.extension() {
-            if ext == "json" {
-                if let Some(path_str) = path.to_str() {
-                    entries.push(path_str.to_string());
-                }
-            }
-        }
-    }
-
-    entries.sort(); // Optional: sort alphabetically
-
-    let formatted: Vec<(String, String)> = entries
-        .iter()
-        .enumerate()
-        .map(|(i, path)| (format!("{:02}", i + 1), path.clone()))
-        .collect();
-
-    Ok(formatted)
-}
-
+//loads theme from file
 pub fn load_and_set_theme_from_file(path: &str) -> Result<Theme> {
     let json = fs::read_to_string(path)?;
     let theme: Theme = serde_json::from_str(&json)?;
