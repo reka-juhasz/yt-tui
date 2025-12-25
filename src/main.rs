@@ -12,6 +12,5 @@ mod utilities;
 async fn main() -> anyhow::Result<()> {
 
     tui::tui_render().await?;
- 
     Ok(())
 }

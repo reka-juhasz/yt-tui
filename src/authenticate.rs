@@ -1,5 +1,4 @@
-//this is responsible for authentication, from reading in credentials to returning a bearer token
-//not gonna lie, it's kind of messy but works fine so we're just gonna leave it for now
+//this is responsible for authentication, from reading in credentials to returning a token
 use anyhow::{anyhow, Result};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;

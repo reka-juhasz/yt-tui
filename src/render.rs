@@ -1,17 +1,12 @@
+// render contains functions that create widgets that the main tui class will use 
+//think of it as a widget factory
+//all render_xy functions return a paragraph and some have parameteres that they will get from the app state
 use crate::colors::Theme;
-use tui::{
-    layout::Alignment,
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
-};
-pub fn render_home<'a>(
-    theme: &Theme,
-    themes: &'a [String],
-    theme_selection_mode: bool,
-    theme_number_input: &'a str,
-) -> Paragraph<'a> {
-    // Start with the welcome message and an empty line
+use tui::{layout::Alignment, style::{Color, Modifier, Style},text::{Span, Spans}, widgets::{Block, BorderType, Borders, Paragraph, Wrap}, };
+
+pub fn render_home<'a>(theme: &Theme, themes: &'a [String], theme_selection_mode: bool, theme_number_input: &'a str, ) -> Paragraph<'a> 
+{
+    // welcome message and an empty line
     let mut lines: Vec<Spans> = vec![
         Spans::from(vec![Span::styled(
             "Welcome to the YouTube TUI client!",
@@ -19,15 +14,18 @@ pub fn render_home<'a>(
         )]),
         Spans::from(vec![Span::raw("")]),
     ];
-
-    // Add the theme list or a message if it's empty
-    if themes.is_empty() {
+    //if the themes arent loaded, it will prompt the user to do so
+    if themes.is_empty() 
+    {
         lines.push(Spans::from(vec![Span::styled(
             "Please press 'h' again to select your theme.",
-            Style::default().fg(theme.account_auth_failure.0),
-        )]));
-    } else {
-        lines.extend(themes.iter().enumerate().map(|(i, title)| {
+            Style::default().fg(theme.account_auth_failure.0),)]));
+    }
+    //reading in the themes and adding an index to them 
+    else 
+    {
+        lines.extend(themes.iter().enumerate().map(|(i, title)| 
+        {
             Spans::from(vec![
                 Span::styled(
                     format!("{:02}. ", i + 1),
@@ -41,11 +39,13 @@ pub fn render_home<'a>(
                 ),
                 Span::raw(format!(" (ID: {})", i + 1)),
             ])
-        }));
+        }
+    ));
     }
 
-    // If the user is selecting a theme, show the input prompt
-    if theme_selection_mode {
+    // if the user is selecting a theme, show the input prompt
+    if theme_selection_mode 
+    {
         lines.push(Spans::from(vec![
             Span::raw("Select a theme by number: "),
             Span::styled(
@@ -57,7 +57,7 @@ pub fn render_home<'a>(
         ]));
     }
 
-    // Return the combined paragraph
+    //return the combined paragraph
     Paragraph::new(lines)
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: true })
@@ -70,22 +70,16 @@ pub fn render_home<'a>(
         )
 }
 
-pub fn render_playlists<'a>(
-    theme: &Theme,
-    playlists: &'a [(String, String)],
-    playlist_selection_mode: bool,
-    playlist_number_input: &'a str,
-) -> Paragraph<'a> {
-    let mut lines: Vec<Spans> = if playlists.is_empty() {
-        vec![Spans::from(vec![Span::styled(
-            "No playlists found.",
-            Style::default().fg(theme.account_auth_failure.0),
-        )])]
-    } else {
-        playlists
-            .iter()
-            .enumerate()
-            .map(|(i, (title, id))| {
+pub fn render_playlists<'a>( theme: &Theme, playlists: &'a [(String, String)], playlist_selection_mode: bool, playlist_number_input: &'a str,) -> Paragraph<'a> 
+{
+    let mut lines: Vec<Spans> = if playlists.is_empty() 
+    {
+        vec![Spans::from(vec![Span::styled( "No playlists found.", Style::default().fg(theme.account_auth_failure.0),)])]
+    } 
+    //enumberating, displaying and indexing to the playists
+    else 
+    {
+        playlists.iter().enumerate().map(|(i, (title, id))| {
                 Spans::from(vec![
                     Span::styled(
                         format!("{:02}. ", i + 1),
@@ -99,11 +93,11 @@ pub fn render_playlists<'a>(
                     ),
                     Span::raw(format!(" (ID: {})", id)),
                 ])
-            })
-            .collect()
+            }).collect()
     };
-
-    if playlist_selection_mode {
+    //also handling the playlist selection mode
+    if playlist_selection_mode 
+    {
         lines.push(Spans::from(vec![
             Span::raw("Select playlist by number: "),
             Span::styled(
@@ -111,10 +105,9 @@ pub fn render_playlists<'a>(
                 Style::default()
                     .fg(theme.playlist_number.0)
                     .add_modifier(Modifier::BOLD),
-            ),
-        ]));
+            ),]));
     }
-
+    //returning paragaph
     Paragraph::new(lines)
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: true })
@@ -127,23 +120,8 @@ pub fn render_playlists<'a>(
         )
 }
 
-pub fn render_videos<'a>() -> Paragraph<'a> {
-    Paragraph::new(vec![
-        Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::raw(
-            "Same, but for the videos in the selected playlists",
-        )]),
-    ])
-    .alignment(Alignment::Center)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::White))
-            .title("Videos")
-            .border_type(BorderType::Plain),
-    )
-}
 
+//render from the account tab
 pub fn render_accounts<'a>(theme: &Theme, messages: &'a [String]) -> Paragraph<'a> {
     let mut lines = vec![
         Spans::from(vec![Span::raw("")]),
@@ -156,12 +134,13 @@ pub fn render_accounts<'a>(theme: &Theme, messages: &'a [String]) -> Paragraph<'
         Spans::from(vec![Span::raw("")]),
     ];
 
-    for message in messages {
+    for message in messages 
+    {
         lines.push(Spans::from(vec![Span::raw(message)]));
     }
     Paragraph::new(lines)
         .alignment(Alignment::Left)
-        .wrap(Wrap { trim: false }) // ✅ this enables wrapping
+        .wrap(Wrap { trim: false }) //  this enables wrapping
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -170,8 +149,10 @@ pub fn render_accounts<'a>(theme: &Theme, messages: &'a [String]) -> Paragraph<'
                 .border_type(BorderType::Plain),
         )
 }
-
-pub fn render_commands<'a>(theme: &Theme) -> Paragraph<'a> {
+//rendering command tab
+//commands are hardcoded for now, may create a .txt for it
+pub fn render_commands<'a>(theme: &Theme) -> Paragraph<'a> 
+{
     Paragraph::new(vec![
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::styled(
@@ -225,28 +206,25 @@ pub fn render_commands<'a>(theme: &Theme) -> Paragraph<'a> {
             .border_type(BorderType::Plain),
     )
 }
-
-pub fn render_search<'a>(
-    theme: &Theme,
-    search_results: &'a [(String, String, String, String)],
-    search_attempted: bool,
-    search_selection_mode: bool,
-    search_number_input: &'a str,
-) -> Paragraph<'a> {
-    let mut lines: Vec<Spans> = if !search_attempted {
+//search rendering
+pub fn render_search<'a>(theme: &Theme,search_results: &'a [(String, String, String, String)],search_attempted: bool,search_selection_mode: bool,search_number_input: &'a str,) -> Paragraph<'a> 
+{
+    let mut lines: Vec<Spans> = if !search_attempted 
+    {
         vec![Spans::from(Span::styled(
             "Type and press Enter to search...",
             Style::default().fg(theme.search_box.0),
         ))]
-    } else if search_results.is_empty() {
+    } 
+    else if search_results.is_empty() {
         vec![Spans::from(Span::styled(
             "No results found.",
             Style::default().fg(theme.account_auth_failure.0),
         ))]
-    } else {
-        search_results
-            .iter()
-            .enumerate()
+    } 
+    else 
+    {
+        search_results.iter().enumerate()
             .map(|(i, (title, duration_raw, uploader, _id))| {
                 let duration = parse_iso8601_duration(duration_raw);
 
@@ -265,23 +243,16 @@ pub fn render_search<'a>(
                     Span::styled(uploader, Style::default().fg(theme.search_number.0)),
                     Span::styled(
                         format!(" [{}]", duration),
-                        Style::default().fg(theme.search_name.0),
-                    ),
-                ])
-            })
-            .collect()
+                        Style::default().fg(theme.search_name.0),),])}).collect()
     };
 
-    if search_selection_mode {
+    if search_selection_mode 
+    {
         lines.push(Spans::from(vec![
             Span::raw("Select video by number: "),
             Span::styled(
                 search_number_input,
-                Style::default()
-                    .fg(theme.search_number.0)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]));
+                Style::default().fg(theme.search_number.0).add_modifier(Modifier::BOLD),),]));
     }
 
     Paragraph::new(lines)
@@ -295,8 +266,9 @@ pub fn render_search<'a>(
                 .border_type(tui::widgets::BorderType::Plain),
         )
 }
-
-fn parse_iso8601_duration(duration: &str) -> String {
+//parsing video duration
+fn parse_iso8601_duration(duration: &str) -> String 
+{
     let mut hours = 0;
     let mut minutes = 0;
     let mut seconds = 0;
@@ -343,7 +315,8 @@ fn parse_iso8601_duration(duration: &str) -> String {
     }
 }
 
-pub fn render_search_prompt<'a>(user_input: &'a str) -> Paragraph<'a> {
+pub fn render_search_prompt<'a>(user_input: &'a str) -> Paragraph<'a> 
+{
     Paragraph::new(vec![
         Spans::from(vec![Span::raw("Search YouTube:")]),
         Spans::from(vec![Span::raw(user_input)]),
